@@ -90,12 +90,16 @@ services:
     environment:
       TZ: Asia/Shanghai
     ports:
-      # 唯一的对外端口；80 被占用时在 .env 里改 BLOG_HTTP_PORT
+      # 对外端口；80 / 443 被占用时在 .env 里改 BLOG_HTTP_PORT / BLOG_HTTPS_PORT
       - "${BLOG_HTTP_PORT:-80}:80"
+      - "${BLOG_HTTPS_PORT:-443}:443"
     volumes:
       # certbot 的 HTTP-01 校验目录：宿主签发/续期时把校验文件写在这里，
       # 容器只读挂载后由 nginx 的 /.well-known/acme-challenge/ 直接返回
       - /var/www/certbot:/var/www/certbot:ro
+      # 证书目录：certbot 在宿主签发/续期，容器只读挂载后由 nginx 读取。
+      # 注意：证书不存在时 nginx 起不来，首次部署请按 README「域名与 HTTPS」先签发证书。
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     healthcheck:
       # 用 /healthz 而不是 /：后者将来会 301 到 HTTPS，证书域名与 127.0.0.1 不匹配会误判
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]

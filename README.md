@@ -236,6 +236,7 @@ npm run format              # Prettier 格式化
 | `backend/src/main/resources/application-docker.yml` | `docker` profile：数据库、JWT、上传目录从环境变量读取 |
 | `frontend/Dockerfile` | 多阶段构建：Node 构建（含 `vue-tsc` 类型检查）→ Nginx 托管 |
 | `frontend/nginx.conf` | SPA history 回退 + `/api` 反代到后端容器（去掉 `/api` 前缀） |
+| `docker/certbot-deploy-hook.sh` | certbot 续期钩子：证书更新后重载前端容器里的 nginx |
 | `docker/mysql-client.cnf` | 挂进 MySQL 容器的客户端配置，把 `mysql` / `mysqldump` 的字符集固定成 utf8mb4（不加会把中文种子数据写成乱码） |
 | `deploy.sh` | 服务器一键脚本：`init` / `up` / `account` / `backup` / `logs` / `update` …；`up` 会等到所有容器健康检查通过才返回 |
 | `.env.example` | 部署配置模板，复制成 `.env` 使用（`.env` 已被 gitignore 忽略） |
@@ -297,7 +298,54 @@ docker compose run --rm --no-deps -T --user root \
 
 #### 5. 域名与 HTTPS
 
-容器内的 Nginx 只监听 HTTP，TLS 建议在它前面做：域名解析到服务器后，用宿主机 Nginx / Caddy / 云厂商负载均衡终止 HTTPS，再反代到 `127.0.0.1:${BLOG_HTTP_PORT}`（保留 `proxy_set_header Host $host;` 即可）。前端资源路径和 `/api` 都是同源相对路径，不需要因为域名或协议改动重新构建。
+前端容器里的 Nginx 同时监听 80 和 443：**80 只做 ACME 校验和跳转，443 才是站点本体**，证书由宿主机上的 certbot 以 webroot 模式签发（宿主机装 Nginx 去抢 80 端口的 `certbot --nginx` 这条路在 Docker 部署里走不通，80 被容器占着）。
+
+准备：域名 A 记录指向服务器 IP，安全组 / 防火墙放行 **80 和 443**。
+
+##### 已经有证书的机器（日常更新）
+
+```bash
+docker compose up -d --build        # 或 ./deploy.sh up
+```
+
+证书在 `/etc/letsencrypt`，由 compose 只读挂载进前端容器，重建容器会自动读到。
+
+##### 首次签发（服务器上还没有证书）
+
+注意顺序：证书不存在时 nginx 起不来，所以先用一个临时容器占住 80 端口把证书签出来，再启动整套服务。
+
+```bash
+sudo mkdir -p /var/www/certbot
+
+# 1) 临时用 nginx 容器只服务 ACME 校验目录（镜像可换成国内加速地址）
+sudo docker run -d --rm --name acme-bootstrap \
+  -p 80:80 -v /var/www/certbot:/usr/share/nginx/html:ro nginx:alpine
+
+# 2) 签发（换成自己的域名和邮箱）
+sudo certbot certonly --webroot -w /var/www/certbot \
+  -d aitor.top -d www.aitor.top \
+  --non-interactive --agree-tos --no-eff-email
+
+# 3) 撤掉临时容器，启动整套服务
+sudo docker rm -f acme-bootstrap
+docker compose up -d --build
+```
+
+续期由 certbot 自己的定时任务完成（apt 装的 certbot 会带 `certbot.timer` 和 `/etc/cron.d/certbot`），它沿用同一份 webroot 配置，不需要停容器。装上 deploy hook 后，续期完会自动重载容器里的 nginx：
+
+```bash
+sudo chmod +x docker/certbot-deploy-hook.sh
+sudo ln -sf "$PWD/docker/certbot-deploy-hook.sh" /etc/letsencrypt/renewal-hooks/deploy/
+sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
+```
+
+几点说明：
+
+- 域名出现在 `frontend/nginx.conf` 的 `server_name`、80 端口的跳转目标和证书路径里，换域名三处一起改。
+- 只有证书路径 `/etc/letsencrypt/live/<域名>/` 变了才需要动配置；续期本身只更新文件内容，`nginx -s reload` 即可生效。
+- 证书和校验目录都是只读挂载，容器里的 nginx 不会去改它们。
+- 前端资源路径和 `/api` 都是同源相对路径，换域名或协议不需要重新构建镜像。
+- 想省掉 80 端口的跳转、让 HTTP 也能直接打开站点，把 `frontend/nginx.conf` 里 80 段的 `location /` 换成和 443 段一样的站点配置即可（不推荐，HTTPS 应该是唯一入口）。
 
 #### 6. 常见问题
 
