@@ -92,8 +92,13 @@ services:
     ports:
       # 唯一的对外端口；80 被占用时在 .env 里改 BLOG_HTTP_PORT
       - "${BLOG_HTTP_PORT:-80}:80"
+    volumes:
+      # certbot 的 HTTP-01 校验目录：宿主签发/续期时把校验文件写在这里，
+      # 容器只读挂载后由 nginx 的 /.well-known/acme-challenge/ 直接返回
+      - /var/www/certbot:/var/www/certbot:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      # 用 /healthz 而不是 /：后者将来会 301 到 HTTPS，证书域名与 127.0.0.1 不匹配会误判
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/healthz || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
