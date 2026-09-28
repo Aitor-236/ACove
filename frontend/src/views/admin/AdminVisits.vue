@@ -41,35 +41,22 @@ const trend = ref<VisitDailyItem[]>([])
 const todayStats = computed<VisitDailyItem>(() => overview.value?.today ?? EMPTY_DAY)
 const yesterdayStats = computed<VisitDailyItem>(() => overview.value?.yesterday ?? EMPTY_DAY)
 
-const pvGrowth = computed(() => describeGrowth(overview.value?.pvGrowth ?? null, overview.value?.pvDelta ?? 0))
-const uvGrowth = computed(() => describeGrowth(overview.value?.uvGrowth ?? null, overview.value?.uvDelta ?? 0))
+const pvGrowth = computed(() => describeGrowth(overview.value?.pvGrowth ?? null))
+const uvGrowth = computed(() => describeGrowth(overview.value?.uvGrowth ?? null))
 
 const rangeSummary = computed(() => {
   const items = trend.value
   if (!items.length) {
-    return { pv: 0, uv: 0, pvAvg: 0, uvAvg: 0, peak: null as VisitDailyItem | null }
+    return { pv: 0, uv: 0 }
   }
   const pv = items.reduce((sum, item) => sum + item.pv, 0)
   const uv = items.reduce((sum, item) => sum + item.uv, 0)
-  const peak = items.reduce<VisitDailyItem | null>(
-    (best, item) => (best === null || item.pv > best.pv ? item : best),
-    null
-  )
-  return {
-    pv,
-    uv,
-    pvAvg: Math.round((pv / items.length) * 10) / 10,
-    uvAvg: Math.round((uv / items.length) * 10) / 10,
-    peak
-  }
+  return { pv, uv }
 })
 
 const rangeSummaryText = computed(() => {
-  const { pv, uv, pvAvg, uvAvg, peak } = rangeSummary.value
-  if (!peak) {
-    return '还没有访问数据'
-  }
-  return `区间合计 PV ${pv} / UV ${uv}，日均 PV ${pvAvg} / UV ${uvAvg}，PV 最高的一天是 ${formatDate(peak.date)}（${peak.pv}）`
+  const { pv, uv } = rangeSummary.value
+  return `合计 PV ${pv} / UV ${uv}`
 })
 
 /** Y 轴刻度：0 / 1 / 2 / 3 档，数值取整，避免出现小数刻度 */
@@ -208,17 +195,16 @@ function formatDate(date: string) {
 }
 
 /** 把增幅翻译成卡片上那行文案 + 配色 */
-function describeGrowth(growth: number | null, delta: number) {
+function describeGrowth(growth: number | null) {
   if (growth === null) {
-    return { text: '昨日没有数据，暂不对比', tone: 'none' as const }
+    return { text: '昨日无数据', tone: 'none' as const }
   }
   if (growth === 0) {
     return { text: '与昨日持平', tone: 'flat' as const }
   }
   const percent = `${growth > 0 ? '+' : ''}${growth.toFixed(2)}%`
-  const deltaText = `${delta > 0 ? '+' : ''}${delta}`
   return {
-    text: `较昨日 ${percent}（${deltaText}）`,
+    text: `较昨日 ${percent}`,
     tone: growth > 0 ? ('up' as const) : ('down' as const)
   }
 }
@@ -231,9 +217,6 @@ onMounted(loadData)
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">访问统计</h1>
-        <p class="admin-page-subtitle">
-          只统计前台页面的浏览（后台与登录页不计入），按天记录在 MySQL，没有用 Redis
-        </p>
       </div>
 
       <div class="admin-page-actions">
@@ -345,7 +328,6 @@ onMounted(loadData)
       <header class="panel-header table-header">
         <div>
           <h2 class="panel-title">最近 {{ DETAIL_DAYS }} 天明细</h2>
-          <p class="panel-subtitle">每天一行，PV 环比是相对前一天；图表切换天数不影响这里</p>
         </div>
       </header>
 
