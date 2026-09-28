@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CollectionTag, Document, EditPen, Folder, User } from '@element-plus/icons-vue'
+import { CollectionTag, Document, EditPen, Folder, TrendCharts, User } from '@element-plus/icons-vue'
 import '@/styles/admin.css'
 import request from '@/utils/request'
 
@@ -45,6 +45,10 @@ const navGroups: NavGroup[] = [
   {
     title: '个人管理',
     items: [{ label: '个人资料', icon: User, to: '/admin/profile' }]
+  },
+  {
+    title: '站点数据',
+    items: [{ label: '访问统计', icon: TrendCharts, to: '/admin/visits' }]
   },
   {
     title: '预留功能',

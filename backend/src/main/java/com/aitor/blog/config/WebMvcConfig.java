@@ -30,6 +30,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 "/category/list",              // public category list
                 "/tag/list",                   // public tag list（前台标签面板）
                 "/site/owner",                 // public site owner profile
+                "/visit/report",               // 前台页面浏览上报（匿名，访客标识走 Cookie）
                 "/uploads/**");                // 头像等静态资源，<img> 请求不会带 token
     }
 

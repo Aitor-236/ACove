@@ -23,6 +23,7 @@ Aitor_Blog/
 │   └── src/main/                 # java/com/aitor/blog + resources
 │       ├── java/.../auth/        # 登录：AuthController / AuthService / SysUser
 │       ├── java/.../article/     # 文章、分类、标签（含 admin 侧接口）
+│       ├── java/.../visit/       # 访问统计：页面浏览上报 + 后台 PV / UV 概览与趋势
 │       ├── java/.../common/      # Result、BusinessException、JwtInterceptor、JwtUtil、PageParam
 │       ├── java/.../config/      # SecurityConfig、WebMvcConfig、MybatisPlusConfig、JwtProperties
 │       └── resources/
@@ -34,7 +35,7 @@ Aitor_Blog/
 │   ├── nginx.conf                # SPA 回退 + /api 反代到后端容器
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / About / Login
-│       ├── views/admin/          # 后台页面：文章、分类、标签、个人管理 + AdminLayout
+│       ├── views/admin/          # 后台页面：文章、分类、标签、个人管理、访问统计 + AdminLayout
 │       ├── components/DockNav.vue
 │       ├── router/index.ts
 │       └── utils/request.ts      # axios 实例（baseURL = /api）
@@ -42,6 +43,7 @@ Aitor_Blog/
     ├── init_database.sql         # 全新部署：建库 + 建表（不含任何用户）
     ├── article_schema.sql        # 已有数据库的增量升级脚本
     ├── user_schema.sql           # 用户表增量升级（avatar / role 两列）
+    ├── visit_schema.sql          # 访问统计增量升级（每日 PV / UV 两张表）
     └── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
 ├── docker-compose.yml            # 服务器部署编排：MySQL + 后端 + 前端
 ├── deploy.sh                     # 一键部署 / 运维脚本（init / up / account / backup …）
@@ -76,6 +78,12 @@ mysql -uroot -p < sql/init_database.sql
 
 ```bash
 mysql -uroot -p < sql/article_schema.sql
+```
+
+只补访问统计模块（每日 PV / UV）的表：
+
+```bash
+mysql -uroot -p < sql/visit_schema.sql
 ```
 
 两个脚本都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
@@ -160,6 +168,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/category/list` | 分类列表，`articleCount` 只统计已发布文章 |
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
+| POST | `/visit/report` | 前台页面浏览上报，每次切换页面调一次；访客标识由服务端 Cookie（`blog_vid`）维护，前端不用传参 |
 | GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`），由后端直接托管，不在鉴权白名单里 |
 
 后台接口（需要 `Authorization: Bearer <token>`）：
@@ -180,6 +189,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/user/profile/update` | 修改用户名或邮箱，只更新传入的字段，重名或格式错误返回 400 |
 | POST | `/admin/user/avatar` | 上传头像（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | POST | `/admin/upload/image` | 上传正文配图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif），返回 `url` 供编辑器写进 Markdown |
+| GET | `/admin/visit/overview` | 访问统计概览：今日 / 昨日的 PV、UV，以及绝对增量与增幅百分比（昨日为 0 时增幅返回 `null`） |
+| GET | `/admin/visit/trend` | 最近若干天的每日 PV / UV，`days` 默认 30、上限 90，按日期升序返回（没有数据的日子补 0） |
 
 写操作统一使用 POST（项目里没有使用 PUT / DELETE 动词）。
 
@@ -192,6 +203,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `tag` | 标签：`name`（唯一） |
 | `article` | 文章主表：`title` / `summary` / `content_markdown` / `status`(draft, published) / `published_at` / `reading_minutes` |
 | `article_tag` | 文章与标签的关联表，复合主键，级联删除 |
+| `visit_daily_stat` | 每日访问汇总：`stat_date`（主键）/ `pv` / `uv`，一天一行，后台统计页的数据来源 |
+| `visit_visitor` | 每日访客去重：`stat_date` + `visitor_key`（唯一键），访客当天第一次出现才让 UV 加一；`visitor_key` 是 Cookie 里 IP + User-Agent 的哈希，不存原始 IP |
 
 外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`。
 

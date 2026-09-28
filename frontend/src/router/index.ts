@@ -75,6 +75,11 @@ const routes = [
         path: 'profile',
         name: 'AdminProfile',
         component: () => import('@/views/admin/AdminProfile.vue')
+      },
+      {
+        path: 'visits',
+        name: 'AdminVisits',
+        component: () => import('@/views/admin/AdminVisits.vue')
       }
     ]
   }
@@ -98,6 +103,27 @@ router.beforeEach((to) => {
 
   ElMessage.warning('请先登录后再进入后台管理')
   return { path: '/login', query: { redirect: to.fullPath } }
+})
+
+/**
+ * 前台页面浏览上报：后台访问统计的 PV / UV 就来自这里。
+ * 只报前台页面（后台和登录页不算访问），用 sendBeacon 发出去就走，
+ * 不等响应、不弹提示，上报失败也不影响页面。
+ */
+function reportVisit() {
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon('/api/visit/report')
+    return
+  }
+  fetch('/api/visit/report', { method: 'POST', keepalive: true }).catch(() => {})
+}
+
+router.afterEach((to) => {
+  const path = to.path
+  if (path.startsWith('/admin') || path.startsWith('/login')) {
+    return
+  }
+  reportVisit()
 })
 
 export default router

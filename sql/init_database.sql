@@ -9,9 +9,11 @@
 -- 说明：
 --   - 本脚本不预置任何用户，也不写入任何文章数据。
 --     执行完后请运行 sql/init_account.sh 创建你自己的登录账号。
---   - 如果数据库已存在、只是要补文章模块的表，用 sql/article_schema.sql。
+--   - 如果数据库已存在、只是要补文章模块的表，用 sql/article_schema.sql；
+--     补访问统计模块的表用 sql/visit_schema.sql。
 --   - 全部使用 CREATE TABLE IF NOT EXISTS，重复执行不会报错，也不会覆盖已有数据。
---   - 注意：文章模块表结构变更时，本文件与 article_schema.sql 需要同步修改。
+--   - 注意：文章模块表结构变更时，本文件与 article_schema.sql 需要同步修改；
+--     访问统计模块表结构变更时，本文件与 visit_schema.sql 需要同步修改。
 -- ============================================================
 
 -- 显式声明脚本与连接都用 utf8mb4：否则在某些 locale 下 mysql 客户端会退回
@@ -114,3 +116,28 @@ VALUES
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     sort_order = VALUES(sort_order);
+
+-- ------------------------------------------------------------
+-- 访问统计模块（每天一行汇总 + 当天访客去重，UV 去重不依赖 Redis）
+-- 明细口径见 sql/visit_schema.sql 的注释。
+-- ------------------------------------------------------------
+
+-- 每日访问汇总表（后台访问统计页的数据来源）
+CREATE TABLE IF NOT EXISTS visit_daily_stat (
+    stat_date DATE NOT NULL COMMENT '统计日期',
+    pv BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当日浏览量 PV，每上报一次加一',
+    uv BIGINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '当日独立访客数 UV，按 visitor_key 去重',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (stat_date)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '每日访问汇总表';
+
+-- 每日访客去重表（UV 的判定依据，只保留「谁在哪天来过」）
+CREATE TABLE IF NOT EXISTS visit_visitor (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    stat_date DATE NOT NULL COMMENT '统计日期',
+    visitor_key CHAR(32) NOT NULL COMMENT '访客标识（Cookie 里 IP+UA 的哈希，不存原始 IP）',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '当天首次来访时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_visit_visitor_date_key (stat_date, visitor_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '每日访客去重表';
