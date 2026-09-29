@@ -15,12 +15,14 @@ interface ArticleItem {
   title: string
   summary: string
   categoryName: string
-  publishedAt: string
+  /** 首页动态列表显示更新时间和详情页保持一致 */
+  updatedAt: string | null
   readingMinutes: number
 }
 
 function formatDate(value?: string | null) {
-  return value ? value.slice(0, 10) : ''
+  // 和详情页保持同样的粒度，卡片上多出的时分不影响现有布局
+  return value ? value.replace('T', ' ').slice(0, 16) : ''
 }
 
 /** 站长资料（来自 GET /site/owner）：首页只展示级别最高的账号，也就是站点持有者 */
@@ -145,7 +147,9 @@ onBeforeRouteLeave(() => {
             <h3>{{ article.title }}</h3>
             <p>{{ article.summary }}</p>
             <footer class="card-footer">
-              <time :datetime="article.publishedAt">{{ formatDate(article.publishedAt) }}</time>
+              <time :datetime="article.updatedAt || undefined">
+                {{ formatDate(article.updatedAt) }}
+              </time>
             </footer>
           </router-link>
         </div>

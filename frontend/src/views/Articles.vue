@@ -15,7 +15,8 @@ interface ArticleItem {
   title: string
   summary: string
   categoryName: string
-  publishedAt: string
+  /** 列表卡片显示更新时间和详情页保持一致 */
+  updatedAt: string | null
   readingMinutes: number
   tags: string[]
 }
@@ -47,7 +48,8 @@ interface ArticlePage {
 const PAGE_SIZE = 6
 
 function formatDate(value?: string | null) {
-  return value ? value.slice(0, 10) : ''
+  // 和详情页保持同样的粒度，卡片上多出的时分不影响现有布局
+  return value ? value.replace('T', ' ').slice(0, 16) : ''
 }
 
 const route = useRoute()
@@ -304,7 +306,9 @@ onBeforeRouteLeave(() => {
                 >
                   {{ article.categoryName }}
                 </button>
-                <time :datetime="article.publishedAt">{{ formatDate(article.publishedAt) }}</time>
+                <time :datetime="article.updatedAt || undefined">
+                  {{ formatDate(article.updatedAt) }}
+                </time>
               </div>
               <h2>{{ article.title }}</h2>
               <p>{{ article.summary }}</p>

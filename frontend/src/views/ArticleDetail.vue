@@ -16,7 +16,7 @@ interface ArticleDetail {
   categorySlug: string
   tags: string[]
   readingMinutes: number
-  publishedAt: string | null
+  /** 详情页和列表卡片统一显示更新时间，不再展示发布时间 */
   updatedAt: string | null
 }
 
@@ -115,8 +115,9 @@ watch(
             </router-link>
           </div>
           <div class="detail-meta">
-            <time :datetime="article.publishedAt || undefined">
-              {{ formatDate(article.publishedAt) }}
+            <!-- 和列表卡片统一显示更新时间（后端排序仍按创建时间） -->
+            <time :datetime="article.updatedAt || undefined">
+              {{ formatDate(article.updatedAt) }}
             </time>
           </div>
         </header>

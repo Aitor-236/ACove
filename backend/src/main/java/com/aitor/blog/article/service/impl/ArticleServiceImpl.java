@@ -38,7 +38,10 @@ public class ArticleServiceImpl implements ArticleService {
 
         LambdaQueryWrapper<Article> wrapper = new LambdaQueryWrapper<Article>()
                 .eq(Article::getStatus, STATUS_PUBLISHED)
-                .orderByDesc(Article::getPublishedAt);
+                // 列表卡片展示的是更新时间，但排序暂时按创建时间倒序；
+                // 同一秒创建的记录再按 ID 倒序兜底，避免分页出现顺序抖动。
+                .orderByDesc(Article::getCreatedAt)
+                .orderByDesc(Article::getId);
 
         if (StringUtils.hasText(categorySlug)) {
             ArticleCategory category = articleCategoryMapper.selectOne(
