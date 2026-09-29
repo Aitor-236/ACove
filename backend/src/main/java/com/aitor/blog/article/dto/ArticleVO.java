@@ -16,6 +16,8 @@ public class ArticleVO {
     private String categoryName;
     private String status;
     private LocalDateTime publishedAt;
+    /** 最后更新时间：前台列表卡片和详情页统一显示这个时间 */
+    private LocalDateTime updatedAt;
     private Integer readingMinutes;
 
     /** 标签名列表，列表卡片上展示；没有标签时是空列表 */
@@ -30,6 +32,7 @@ public class ArticleVO {
         this.summary = article.getSummary();
         this.status = article.getStatus();
         this.publishedAt = article.getPublishedAt();
+        this.updatedAt = article.getUpdatedAt();
         this.readingMinutes = article.getReadingMinutes();
     }
 

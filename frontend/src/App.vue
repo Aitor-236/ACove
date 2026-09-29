@@ -30,6 +30,20 @@ const showDock = computed(() => route.path !== '/login' && !route.path.startsWit
   /* 访问统计里涨 / 跌的文字色，别在组件里写死颜色 */
   --trend-up: #4a7a52;
   --trend-down: #b4553c;
+  /* 正文代码块：深棕底 + 暖色 token，规则在 styles/markdown.css */
+  --code-bg: #3f2e22;
+  --code-tabs-bg: #34251b;
+  --code-border: rgba(63, 46, 34, 0.4);
+  --code-fg: #f6f1e7;
+  --code-muted: rgba(246, 241, 231, 0.6);
+  --code-comment: #a4958a;
+  --code-keyword: #e8a468;
+  --code-string: #b9cd93;
+  --code-number: #e3c07c;
+  --code-title: #f0d3a4;
+  --code-type: #dcb98e;
+  --code-attr: #e0b183;
+  --code-deletion: #e08f7f;
 }
 
 * {
