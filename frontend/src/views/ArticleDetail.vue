@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
+import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
 
 /** 公开文章详情（来自 GET /article/detail/{id}） */
 interface ArticleDetail {
@@ -120,8 +121,13 @@ watch(
           </div>
         </header>
 
-        <!-- 内容已通过 DOMPurify 清洗 -->
-        <div class="markdown-body" v-html="renderedContent"></div>
+        <!-- 内容已通过 DOMPurify 清洗；代码组的切换用事件委托挂在这个容器上 -->
+        <div
+          class="markdown-body"
+          v-html="renderedContent"
+          @click="handleCodeGroupClick"
+          @keydown="handleCodeGroupKeydown"
+        ></div>
       </article>
     </main>
   </div>
@@ -287,53 +293,6 @@ watch(
   border-radius: 0 12px 12px 0;
   color: var(--text-body);
   background: var(--panel-alt-bg);
-}
-
-.markdown-body :deep(code) {
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
-  font-size: 14px;
-  background: rgba(138, 90, 59, 0.12);
-}
-
-.markdown-body :deep(pre) {
-  margin: 0 0 20px;
-  padding: 18px 20px;
-  border-radius: 16px;
-  overflow-x: auto;
-  background: #3f2e22;
-  box-shadow: 0 12px 26px rgba(63, 46, 34, 0.18);
-}
-
-.markdown-body :deep(pre code) {
-  padding: 0;
-  color: #f6f1e7;
-  background: transparent;
-}
-
-/* 代码块语言标签：写得有语言的代码块会被 .code-block 包一层，没写的不会有这层 */
-.markdown-body :deep(.code-block) {
-  position: relative;
-  margin: 0 0 20px;
-}
-
-.markdown-body :deep(.code-block pre) {
-  margin: 0;
-  padding-top: 42px;
-}
-
-.markdown-body :deep(.code-block-lang) {
-  position: absolute;
-  top: 14px;
-  left: 20px;
-  z-index: 1;
-  color: rgba(246, 241, 231, 0.6);
-  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  user-select: none;
 }
 
 .markdown-body :deep(img) {

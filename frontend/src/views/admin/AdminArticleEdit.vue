@@ -12,6 +12,7 @@ import {
 import { Picture, Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
+import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
 
 /** 后台文章详情（来自 GET /admin/article/{id}） */
 interface AdminArticleDetail {
@@ -659,8 +660,13 @@ onMounted(async () => {
             <h2>正文预览</h2>
             <span class="panel-meta">{{ wordCount }} 字</span>
           </div>
-          <!-- 预览内容已用 DOMPurify 清洗 -->
-          <div class="markdown-body" v-html="renderedContent"></div>
+          <!-- 预览内容已用 DOMPurify 清洗；代码组的切换用事件委托挂在这个容器上 -->
+          <div
+            class="markdown-body"
+            v-html="renderedContent"
+            @click="handleCodeGroupClick"
+            @keydown="handleCodeGroupKeydown"
+          ></div>
         </section>
 
         <section v-if="isEditMode" class="admin-panel meta-panel">
@@ -905,6 +911,14 @@ onMounted(async () => {
   font-size: 14px;
   line-height: 1.8;
   overflow-wrap: anywhere;
+  /* 预览面板比详情页窄，代码块跟着收紧一点（样式主体在 styles/markdown.css） */
+  --code-block-gap: 12px;
+  --code-block-radius: 14px;
+  --code-block-padding: 14px;
+  --code-block-padding-top: 34px;
+  --code-font-size: 13px;
+  --code-label-top: 11px;
+  --code-label-left: 14px;
 }
 
 .markdown-body :deep(.preview-placeholder) {
@@ -948,52 +962,6 @@ onMounted(async () => {
   border-radius: 0 12px 12px 0;
   color: var(--text-body);
   background: var(--panel-alt-bg);
-}
-
-.markdown-body :deep(code) {
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 13px;
-  background: rgba(138, 90, 59, 0.12);
-}
-
-.markdown-body :deep(pre) {
-  margin: 0 0 12px;
-  padding: 14px;
-  overflow-x: auto;
-  border-radius: 14px;
-  background: rgba(138, 90, 59, 0.1);
-}
-
-.markdown-body :deep(pre code) {
-  padding: 0;
-  background: transparent;
-}
-
-/* 代码块语言标签：有语言的代码块会被 .code-block 包一层 */
-.markdown-body :deep(.code-block) {
-  position: relative;
-  margin: 0 0 12px;
-}
-
-.markdown-body :deep(.code-block pre) {
-  margin: 0;
-  padding-top: 34px;
-}
-
-.markdown-body :deep(.code-block-lang) {
-  position: absolute;
-  top: 11px;
-  left: 14px;
-  z-index: 1;
-  color: var(--accent-brown);
-  font-family:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'PingFang SC', monospace;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  opacity: 0.8;
-  user-select: none;
 }
 
 .markdown-body :deep(img) {

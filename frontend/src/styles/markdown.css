@@ -1,0 +1,209 @@
+/*
+ * Markdown 正文里的代码块 / 代码组样式 + 语法高亮配色。
+ *
+ * 详情页和后台预览共用这一份（以前两处各写一套 pre/code 规则），配色统一取
+ * App.vue :root 里的 --code-* token；尺寸走下面这组局部变量，页面可以按面板大小覆盖。
+ */
+
+.markdown-body {
+  --code-block-gap: 20px;
+  --code-block-radius: 16px;
+  --code-block-padding: 18px 20px;
+  --code-block-padding-top: 42px;
+  --code-font-size: 14px;
+  --code-label-top: 14px;
+  --code-label-left: 20px;
+}
+
+/* ---------- 行内代码 ---------- */
+
+.markdown-body code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-size: var(--code-font-size, 14px);
+  background: rgba(138, 90, 59, 0.12);
+}
+
+/* ---------- 代码块 ---------- */
+
+.markdown-body pre {
+  margin: 0 0 var(--code-block-gap, 20px);
+  padding: var(--code-block-padding, 18px 20px);
+  border: 1px solid var(--code-border, rgba(63, 46, 34, 0.4));
+  border-radius: var(--code-block-radius, 16px);
+  overflow-x: auto;
+  background: var(--code-bg, #3f2e22);
+  box-shadow: 0 12px 26px rgba(63, 46, 34, 0.18);
+  -webkit-overflow-scrolling: touch;
+}
+
+.markdown-body pre code {
+  padding: 0;
+  color: var(--code-fg, #f6f1e7);
+  /* 字号沿用上面 code 的 --code-font-size，别在这里 inherit（会跟着正文一起放大） */
+  background: transparent;
+}
+
+/* 有语言的代码块：外面包一层 .code-block，左上角放语言/文件名的标签 */
+.markdown-body .code-block {
+  position: relative;
+  margin: 0 0 var(--code-block-gap, 20px);
+}
+
+.markdown-body .code-block pre {
+  margin: 0;
+  padding-top: var(--code-block-padding-top, 42px);
+}
+
+.markdown-body .code-block-lang {
+  position: absolute;
+  top: var(--code-label-top, 14px);
+  left: var(--code-label-left, 20px);
+  z-index: 1;
+  color: var(--code-muted, rgba(246, 241, 231, 0.6));
+  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  user-select: none;
+}
+
+/* ---------- 代码组：多语言切换 ---------- */
+
+.markdown-body .code-group {
+  margin: 0 0 var(--code-block-gap, 20px);
+  border: 1px solid var(--code-border, rgba(63, 46, 34, 0.4));
+  border-radius: var(--code-block-radius, 16px);
+  overflow: hidden;
+  background: var(--code-bg, #3f2e22);
+  box-shadow: 0 12px 26px rgba(63, 46, 34, 0.18);
+}
+
+.markdown-body .code-group-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 6px 8px 0;
+  background: var(--code-tabs-bg, #34251b);
+  border-bottom: 1px solid rgba(246, 241, 231, 0.12);
+}
+
+.markdown-body .code-group-tab {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  color: var(--code-muted, rgba(246, 241, 231, 0.6));
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.2;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.markdown-body .code-group-tab:hover {
+  color: var(--code-fg, #f6f1e7);
+  background: rgba(185, 138, 94, 0.16);
+}
+
+.markdown-body .code-group-tab.is-active {
+  color: var(--code-fg, #f6f1e7);
+  background: var(--code-bg, #3f2e22);
+  box-shadow: inset 0 -2px 0 var(--accent-brown-soft, #b98a5e);
+}
+
+.markdown-body .code-group-tab:focus-visible {
+  outline: 2px solid var(--accent-brown-soft, #b98a5e);
+  outline-offset: -2px;
+}
+
+.markdown-body .code-group-panel {
+  display: none;
+}
+
+.markdown-body .code-group-panel.is-active {
+  display: block;
+}
+
+/* 面板里的 pre 不再自己成框，底色交给外层 .code-group */
+.markdown-body .code-group-panel pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+/* ---------- 语法高亮配色（hljs token → 暖色深棕主题） ---------- */
+
+.markdown-body .hljs {
+  color: var(--code-fg, #f6f1e7);
+}
+
+.markdown-body .hljs-comment,
+.markdown-body .hljs-quote {
+  color: var(--code-comment, #a4958a);
+  font-style: italic;
+}
+
+.markdown-body .hljs-keyword,
+.markdown-body .hljs-selector-tag,
+.markdown-body .hljs-literal,
+.markdown-body .hljs-doctag,
+.markdown-body .hljs-name,
+.markdown-body .hljs-strong {
+  color: var(--code-keyword, #e8a468);
+}
+
+.markdown-body .hljs-string,
+.markdown-body .hljs-regexp,
+.markdown-body .hljs-addition,
+.markdown-body .hljs-attribute,
+.markdown-body .hljs-meta .hljs-string {
+  color: var(--code-string, #b9cd93);
+}
+
+.markdown-body .hljs-number,
+.markdown-body .hljs-symbol,
+.markdown-body .hljs-bullet,
+.markdown-body .hljs-link,
+.markdown-body .hljs-selector-attr,
+.markdown-body .hljs-selector-pseudo,
+.markdown-body .hljs-meta,
+.markdown-body .hljs-selector-id,
+.markdown-body .hljs-selector-class {
+  color: var(--code-number, #e3c07c);
+}
+
+.markdown-body .hljs-title,
+.markdown-body .hljs-section,
+.markdown-body .hljs-title.function_,
+.markdown-body .hljs-title.class_ {
+  color: var(--code-title, #f0d3a4);
+}
+
+.markdown-body .hljs-type,
+.markdown-body .hljs-built_in,
+.markdown-body .hljs-class .hljs-title,
+.markdown-body .hljs-title.class_.inherited__ {
+  color: var(--code-type, #dcb98e);
+}
+
+.markdown-body .hljs-attr,
+.markdown-body .hljs-variable,
+.markdown-body .hljs-template-variable,
+.markdown-body .hljs-params,
+.markdown-body .hljs-property,
+.markdown-body .hljs-tag {
+  color: var(--code-attr, #e0b183);
+}
+
+.markdown-body .hljs-deletion {
+  color: var(--code-deletion, #e08f7f);
+}
+
+.markdown-body .hljs-emphasis {
+  font-style: italic;
+}
