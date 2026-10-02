@@ -911,12 +911,12 @@ onMounted(async () => {
   font-size: 14px;
   line-height: 1.8;
   overflow-wrap: anywhere;
-  /* 预览面板比详情页窄，代码块跟着收紧一点（样式主体在 styles/markdown.css） */
-  --code-block-gap: 12px;
+  /* 预览面板比详情页窄，代码块和表格跟着收紧一点（样式主体在 styles/markdown.css） */
+  --markdown-gap: 12px;
+  --markdown-font-size: 13px;
   --code-block-radius: 14px;
   --code-block-padding: 14px;
   --code-block-padding-top: 34px;
-  --code-font-size: 13px;
   --code-label-top: 11px;
   --code-label-left: 14px;
 }

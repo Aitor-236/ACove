@@ -304,24 +304,6 @@ watch(
   box-shadow: 0 12px 28px rgba(120, 88, 58, 0.2);
 }
 
-.markdown-body :deep(table) {
-  width: 100%;
-  margin-bottom: 20px;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  padding: 10px 12px;
-  border: 1px solid rgba(138, 90, 59, 0.22);
-  text-align: left;
-}
-
-.markdown-body :deep(th) {
-  background: var(--panel-alt-bg);
-}
-
 .markdown-body :deep(hr) {
   margin: 28px 0;
   border: none;
