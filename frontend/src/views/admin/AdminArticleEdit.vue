@@ -925,6 +925,15 @@ onMounted(async () => {
   color: var(--text-muted);
 }
 
+/* 预览面板只有 ~380px 宽：表格按自然列宽渲染，超宽时在表格内部横向滚动，
+   否则 4 列以上会被压成一格一格的花卷（前台详情页版心宽，仍是撑满 100% 不滚动） */
+.markdown-body :deep(table) {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .markdown-body :deep(h1),
 .markdown-body :deep(h2),
 .markdown-body :deep(h3) {
