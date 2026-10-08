@@ -157,9 +157,6 @@ onMounted(loadCategories)
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">分类管理</h1>
-        <p class="admin-page-subtitle">
-          共 {{ categories.length }} 个分类，按排序值展示
-        </p>
       </div>
 
       <div class="admin-page-actions">

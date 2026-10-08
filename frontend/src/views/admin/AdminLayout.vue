@@ -2,7 +2,15 @@
 import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CollectionTag, Document, EditPen, Folder, TrendCharts, User } from '@element-plus/icons-vue'
+import {
+  CollectionTag,
+  Document,
+  EditPen,
+  Folder,
+  Setting,
+  TrendCharts,
+  User
+} from '@element-plus/icons-vue'
 import '@/styles/admin.css'
 import request from '@/utils/request'
 
@@ -47,6 +55,10 @@ const navGroups: NavGroup[] = [
     items: [{ label: '个人资料', icon: User, to: '/admin/profile' }]
   },
   {
+    title: '站点设置',
+    items: [{ label: '网站设置', icon: Setting, to: '/admin/site' }]
+  },
+  {
     title: '站点数据',
     items: [{ label: '访问统计', icon: TrendCharts, to: '/admin/visits' }]
   },
@@ -67,6 +79,10 @@ const avatar = ref('')
 const avatarText = computed(() => username.value.trim().charAt(0).toUpperCase() || 'A')
 const avatarUrl = computed(() => (avatar.value ? `/api${avatar.value}` : ''))
 
+/** 网站名（来自 GET /site/settings），显示在后台左上角；默认 ACove */
+const siteName = ref(localStorage.getItem('siteName') || 'ACove')
+const brandInitial = computed(() => siteName.value.trim().charAt(0).toUpperCase() || 'A')
+
 async function loadAccount() {
   try {
     const res = (await request.get('/admin/user/profile')) as { data: ProfileInfo }
@@ -81,14 +97,30 @@ async function loadAccount() {
   }
 }
 
+/** 网站名改了以后侧栏跟着换；接口拿不到就继续用默认值 */
+async function loadSiteName() {
+  try {
+    const res = (await request.get('/site/settings')) as { data: { siteName: string } }
+    if (res.data.siteName) {
+      siteName.value = res.data.siteName
+      localStorage.setItem('siteName', res.data.siteName)
+    }
+  } catch {
+    // 错误提示由 request 拦截器统一处理，侧栏继续用 localStorage 里的值
+  }
+}
+
 onMounted(() => {
   void loadAccount()
-  // 个人管理页保存成功后广播，侧栏跟着换名字/头像
+  void loadSiteName()
+  // 个人管理 / 网站设置保存成功后广播，侧栏跟着换名字、头像和网站名
   window.addEventListener('profile-updated', loadAccount)
+  window.addEventListener('site-settings-updated', loadSiteName)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('profile-updated', loadAccount)
+  window.removeEventListener('site-settings-updated', loadSiteName)
 })
 
 function isActive(item: NavItem) {
@@ -127,9 +159,9 @@ async function handleLogout() {
   <div class="admin-shell">
     <aside class="admin-sidebar">
       <div class="brand">
-        <div class="brand-logo">A</div>
+        <div class="brand-logo">{{ brandInitial }}</div>
         <div class="brand-text">
-          <strong>Aitor Blog</strong>
+          <strong>{{ siteName }}</strong>
           <span>管理后台</span>
         </div>
       </div>

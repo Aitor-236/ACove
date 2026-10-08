@@ -442,9 +442,6 @@ onBeforeUnmount(() => {
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">个人管理</h1>
-        <p class="admin-page-subtitle">
-          维护登录用的用户名、邮箱地址和头像，修改后立即生效
-        </p>
       </div>
 
       <div class="admin-page-actions">
@@ -455,9 +452,6 @@ onBeforeUnmount(() => {
     <section v-loading="loading" class="admin-panel profile-card">
       <div class="card-head">
         <h2 class="card-title">头像</h2>
-        <p class="card-desc">
-          支持 png / jpg / webp / gif
-        </p>
       </div>
 
       <div class="avatar-row">
@@ -497,7 +491,6 @@ onBeforeUnmount(() => {
     <section v-loading="loading" class="admin-panel profile-card">
       <div class="card-head">
         <h2 class="card-title">用户名</h2>
-        <p class="card-desc">用于登录和后台侧栏显示，不能和其它账号重复</p>
       </div>
 
       <el-form
@@ -529,7 +522,6 @@ onBeforeUnmount(() => {
     <section v-loading="loading" class="admin-panel profile-card">
       <div class="card-head">
         <h2 class="card-title">邮箱地址</h2>
-        <p class="card-desc">可以用邮箱登录，修改后下次登录请使用新邮箱</p>
       </div>
 
       <el-form
@@ -624,12 +616,6 @@ onBeforeUnmount(() => {
   color: var(--text-strong);
   font-size: 16px;
   font-weight: 600;
-}
-
-.card-desc {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
 }
 
 .avatar-row {

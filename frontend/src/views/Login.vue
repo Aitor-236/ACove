@@ -68,7 +68,7 @@ async function handleLogin() {
     <main class="login-card surface-panel">
       <div class="login-header">
         <div class="logo">A</div>
-        <h1>登录 Aitor Blog</h1>
+        <h1>登录 ACove</h1>
         <p>使用邮箱或用户名登录，欢迎回来</p>
       </div>
 

@@ -251,9 +251,6 @@ onMounted(async () => {
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">文章管理</h1>
-        <p class="admin-page-subtitle">
-          共 {{ total }} 篇文章，草稿和已发布都在这里维护
-        </p>
       </div>
 
       <div class="admin-page-actions">

@@ -1,5 +1,5 @@
 -- ============================================================
--- Aitor Blog：数据库初始化脚本（全新部署用）
+-- ACove：数据库初始化脚本（全新部署用）
 -- 用途：从零创建 blog_db、系统用户表和文章模块全部表，可重复执行。
 -- 前提：
 --   1. MySQL 8+
@@ -11,9 +11,11 @@
 --     执行完后请运行 sql/init_account.sh 创建你自己的登录账号。
 --   - 如果数据库已存在、只是要补文章模块的表，用 sql/article_schema.sql；
 --     补访问统计模块的表用 sql/visit_schema.sql。
+--     补站点设置（网站名 / 首页头图 / 首页文字）的表用 sql/site_schema.sql。
 --   - 全部使用 CREATE TABLE IF NOT EXISTS，重复执行不会报错，也不会覆盖已有数据。
 --   - 注意：文章模块表结构变更时，本文件与 article_schema.sql 需要同步修改；
 --     访问统计模块表结构变更时，本文件与 visit_schema.sql 需要同步修改。
+--     站点设置表结构变更时，本文件与 site_schema.sql 需要同步修改。
 -- ============================================================
 
 -- 显式声明脚本与连接都用 utf8mb4：否则在某些 locale 下 mysql 客户端会退回
@@ -141,3 +143,22 @@ CREATE TABLE IF NOT EXISTS visit_visitor (
     PRIMARY KEY (id),
     UNIQUE KEY uk_visit_visitor_date_key (stat_date, visitor_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '每日访客去重表';
+
+-- ------------------------------------------------------------
+-- 站点设置模块（单行配置：网站名 / 首页头图 / 首页中间文字）
+-- 后台「站点设置 → 网站设置」页读写这张表，前台首页读取它的内容。
+-- 明细口径见 sql/site_schema.sql 的注释。
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS site_setting (
+    id BIGINT NOT NULL COMMENT '主键，固定为 1（单行配置表）',
+    site_name VARCHAR(50) NOT NULL DEFAULT 'ACove' COMMENT '网站名，浏览器标题与后台侧栏用',
+    hero_image VARCHAR(255) NOT NULL DEFAULT '' COMMENT '首页头图相对地址（/uploads/hero/xxx），空表示用默认底色',
+    hero_text VARCHAR(200) NOT NULL DEFAULT '' COMMENT '首页中间的文字，空表示回退成网站名',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    PRIMARY KEY (id)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '站点设置表（单行）';
+
+-- 默认那一行：网站名先给 ACove，头图和首页文字留空（前台会自动兜底）
+INSERT INTO site_setting (id, site_name, hero_image, hero_text)
+VALUES (1, 'ACove', '', '')
+ON DUPLICATE KEY UPDATE id = id;

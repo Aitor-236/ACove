@@ -1,12 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DockNav from '@/components/DockNav.vue'
+import request from '@/utils/request'
 
 const route = useRoute()
 
 // 登录页和后台管理都有独立布局，不显示前台底部导航
 const showDock = computed(() => route.path !== '/login' && !route.path.startsWith('/admin'))
+
+/**
+ * 网站名由后台「网站设置」维护，进站时取一次写进浏览器标题；
+ * 拿不到就保留 index.html 里的默认标题。
+ */
+onMounted(async () => {
+  try {
+    const res = (await request.get('/site/settings')) as { data: { siteName: string } }
+    if (res.data.siteName) {
+      document.title = res.data.siteName
+    }
+  } catch {
+    // 拿不到站点设置就用默认标题
+  }
+})
 </script>
 
 <template>

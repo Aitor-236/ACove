@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ============================================================
-# Aitor Blog：部署后创建登录账号
+# ACove：部署后创建登录账号
 # 用法：
 #   ./sql/init_account.sh                              # 交互式输入用户名、邮箱、密码
-#   ./sql/init_account.sh aitor aitor.x@outlook.com     # 用户名邮箱走参数，密码仍交互输入
+#   ./sql/init_account.sh acove acove.x@outlook.com     # 用户名邮箱走参数，密码仍交互输入
 #   ./sql/init_account.sh --print-hash                  # 只生成 BCrypt 哈希并打印，不连数据库
 #                                                      # （Docker 部署时由 ./deploy.sh account 调用）
 # 连接信息可用环境变量覆盖（默认与 application-local.yml.template 保持一致）：

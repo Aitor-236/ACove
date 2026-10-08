@@ -520,15 +520,6 @@ onMounted(async () => {
             {{ status === 'published' ? '已发布' : '草稿' }}
           </el-tag>
         </h1>
-        <p class="admin-page-subtitle">
-          <template v-if="isEditMode">
-            最近更新 {{ formatDateTime(meta.updatedAt) }}
-            <template v-if="meta.publishedAt">
-              · 发布于 {{ formatDateTime(meta.publishedAt) }}
-            </template>
-          </template>
-          <template v-else>正文用 Markdown 编写</template>
-        </p>
       </div>
 
       <div class="admin-page-actions">

@@ -183,9 +183,6 @@ onMounted(loadTags)
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">标签管理</h1>
-        <p class="admin-page-subtitle">
-          共 {{ total }} 个标签，按创建时间倒序展示
-        </p>
       </div>
 
       <div class="admin-page-actions">

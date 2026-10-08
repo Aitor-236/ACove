@@ -1,18 +1,18 @@
 # ============================================================
-# Aitor Blog 服务器部署编排：MySQL + 后端 + 前端(Nginx)
+# ACove 服务器部署编排：MySQL + 后端 + 前端(Nginx)
 # 用法（在仓库根目录）：
 #   cp .env.example .env   # 或 ./deploy.sh init 自动生成随机密钥
 #   docker compose up -d --build
 #   浏览器访问 http://<服务器IP>/       后台 http://<服务器IP>/login
 # 更省事的方式是直接用仓库根的 ./deploy.sh（见该脚本的帮助）。
 # ============================================================
-name: aitor-blog
+name: acove
 
 services:
   # ---------- MySQL 8.4 ----------
   mysql:
     image: mysql:8.4
-    container_name: aitor-blog-mysql
+    container_name: acove-mysql
     restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
@@ -47,8 +47,8 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: aitor-blog-backend:${BLOG_IMAGE_TAG:-latest}
-    container_name: aitor-blog-backend
+    image: acove-backend:${BLOG_IMAGE_TAG:-latest}
+    container_name: acove-backend
     restart: unless-stopped
     depends_on:
       mysql:
@@ -82,13 +82,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: aitor-blog-frontend:${BLOG_IMAGE_TAG:-latest}
-    container_name: aitor-blog-frontend
+    image: acove-frontend:${BLOG_IMAGE_TAG:-latest}
+    container_name: acove-frontend
     restart: unless-stopped
     depends_on:
       - backend
     environment:
       TZ: Asia/Shanghai
+      # 站点主域名：前端 nginx 模板（nginx.conf.template）用它做 server_name、
+      # HTTPS 跳转目标和证书路径，换域名只改 .env 的 SITE_DOMAIN 即可
+      SITE_DOMAIN: ${SITE_DOMAIN:-acove.top}
     ports:
       # 对外端口；80 / 443 被占用时在 .env 里改 BLOG_HTTP_PORT / BLOG_HTTPS_PORT
       - "${BLOG_HTTP_PORT:-80}:80"
