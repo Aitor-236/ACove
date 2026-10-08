@@ -16,7 +16,9 @@
 #   restart [服务名...]       重启服务，默认全部
 #   logs [服务名...]          跟踪日志，默认全部服务
 #   status | ps               查看容器状态
-#   init-db [sql文件...]      导入 SQL，默认 sql/init_database.sql（脚本幂等）
+#   migrate                   重建后端触发 Flyway 迁移，并打印 flyway_schema_history
+#   info                      查看已应用 / 未应用的迁移版本
+#   init-db <sql文件...>      已废弃：只能手工导入指定 SQL（表结构一律走 Flyway）
 #   account                   创建 / 重置登录账号
 #   backup                    备份数据库与上传文件到 backups/<时间戳>/
 #   update                    拉取最新代码后重建并启动
@@ -150,6 +152,34 @@ sql_escape() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
 }
 
+# ---------- Flyway 相关助手 ----------
+# 迁移记录表由 Flyway 自己创建，表名固定；迁移脚本在 backend/src/main/resources/db/migration
+FLYWAY_TABLE="flyway_schema_history"
+MIGRATION_DIR="$ROOT_DIR/backend/src/main/resources/db/migration"
+
+# MySQL 容器是否正在运行（exec 之前先判断，避免报一堆 "service is not running"）
+mysql_container_running() {
+    local id
+    id="$("${COMPOSE[@]}" ps -q mysql 2>/dev/null || true)"
+    [ -n "$id" ] || return 1
+    [ "$(docker inspect -f '{{.State.Running}}' "$id" 2>/dev/null || echo false)" = "true" ]
+}
+
+# Flyway 是否已经在这个库上跑过（即 flyway_schema_history 是否存在）
+flyway_table_exists() {
+    local count
+    count="$(mysql_exec "$(db_name)" \
+        "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = '${FLYWAY_TABLE}';" \
+        2>/dev/null | tail -n 1 | tr -d '[:space:]')" || true
+    [ "$count" = "1" ]
+}
+
+print_flyway_history() {
+    mysql_exec "$(db_name)" \
+        "SELECT installed_rank AS '#', version, description, type, script, installed_on, execution_time, success FROM ${FLYWAY_TABLE} ORDER BY installed_rank;" \
+        || return 0
+}
+
 # ---------- 命令实现 ----------
 cmd_init() {
     local force="${1:-}"
@@ -232,18 +262,87 @@ import_sql_file() {
 }
 
 cmd_init_db() {
+    if [ "$#" -eq 0 ]; then
+        warn "init-db 已废弃：表结构由后端启动时的 Flyway 统一管理（backend/src/main/resources/db/migration）。"
+        warn "让迁移生效请执行：./deploy.sh migrate（或 ./deploy.sh up）"
+        warn "老脚本只是存档在 sql/legacy/ 下，应急排查时可手工导入：./deploy.sh init-db sql/legacy/xxx.sql"
+        exit 1
+    fi
     require_docker
     load_env
     wait_for_mysql
-    if [ "$#" -eq 0 ]; then
-        import_sql_file "$ROOT_DIR/sql/init_database.sql"
-    else
-        local file
-        for file in "$@"; do
-            import_sql_file "$file"
-        done
-    fi
+    local file
+    for file in "$@"; do
+        import_sql_file "$file"
+    done
+    warn "上面这些 SQL 是手工导入的，不会记进 ${FLYWAY_TABLE}；正常改表请新增 db/migration/Vn__xxx.sql"
     log "SQL 导入完成"
+}
+
+# 触发迁移：Flyway 只在后端启动时执行，所以这里重建 backend 容器并等它就绪
+cmd_migrate() {
+    [ -f "$ENV_FILE" ] || { warn ".env 不存在，先按 .env.example 生成一份"; cmd_init; }
+    require_docker
+    load_env
+
+    log "启动 MySQL（若未运行）与后端，Flyway 会在后端启动时应用 db/migration 里的迁移"
+    "${COMPOSE[@]}" up -d mysql
+    wait_for_mysql
+    "${COMPOSE[@]}" up -d --no-deps --force-recreate backend \
+        || die "后端容器启动失败，用 './deploy.sh logs backend' 查看 Flyway 报错"
+
+    # 迁移失败时 JVM 直接退出、容器会不停重启，wait_for_healthy 会判失败；
+    # 用子 shell 包住是为了拦住它内部的 die，好补上 Flyway 专属的提示。
+    if ! (wait_for_healthy 180); then
+        warn "下面是 backend 最近的日志（Flyway 的报错通常在最前面）："
+        "${COMPOSE[@]}" logs --tail=80 backend || true
+        die "迁移可能失败了：修好迁移脚本后重新执行 ./deploy.sh migrate；若 ${FLYWAY_TABLE} 里留有 success=0 的记录，先手工删掉那一行再重跑（见 README 故障排查）。"
+    fi
+
+    if flyway_table_exists; then
+        log "已应用的迁移："
+        print_flyway_history
+    else
+        warn "没找到 ${FLYWAY_TABLE}：后端可能还没执行迁移，用 './deploy.sh logs backend' 看日志"
+    fi
+}
+
+# 查看迁移状态：已应用的读数据库，未应用的拿仓库里的迁移文件对比
+cmd_info() {
+    require_docker
+    load_env
+    mysql_container_running || die "MySQL 容器没在运行，先执行 ./deploy.sh up（或 ./deploy.sh migrate）"
+
+    if ! flyway_table_exists; then
+        warn "这个库里还没有 ${FLYWAY_TABLE}：说明后端从未在这个库上跑过迁移。"
+        log "执行 ./deploy.sh up（或 ./deploy.sh migrate）让后端启动并应用迁移。"
+        return 0
+    fi
+
+    log "已应用的迁移（按 installed_rank 顺序）："
+    print_flyway_history
+
+    local applied pending=0 file base version
+    applied="$(mysql_exec "$(db_name)" \
+        "SELECT version FROM ${FLYWAY_TABLE} WHERE success = 1;" 2>/dev/null | tail -n +2 | tr -d '[:space:]')" || true
+
+    for file in "$MIGRATION_DIR"/V*.sql; do
+        [ -f "$file" ] || continue
+        base="$(basename "$file")"
+        version="${base#V}"
+        version="${version%%__*}"
+        if printf '%s\n' "$applied" | grep -qx "$version"; then
+            continue
+        fi
+        warn "未应用：$base"
+        pending=$((pending + 1))
+    done
+
+    if [ "$pending" -eq 0 ]; then
+        log "仓库里的迁移脚本都已应用"
+    else
+        warn "还有 $pending 个迁移脚本没应用，执行 ./deploy.sh migrate 让后端跑一遍"
+    fi
 }
 
 cmd_account() {
@@ -290,7 +389,7 @@ SET @owner_exists := (SELECT COUNT(*) FROM sys_user WHERE role = 'owner');
 SET @first_user_id := (SELECT MIN(id) FROM sys_user);
 UPDATE sys_user SET role = 'owner'
 WHERE @owner_exists = 0 AND @first_user_id IS NOT NULL AND id = @first_user_id;" \
-        || die "写入账号失败，确认 MySQL 已启动、库表已初始化（./deploy.sh init-db）"
+        || die "写入账号失败，确认 MySQL 已启动、后端已跑完 Flyway 迁移（./deploy.sh up 或 ./deploy.sh migrate）"
 
     log "账号已写入 $(db_name).sys_user：$username <$email>"
     local port="${BLOG_HTTP_PORT:-80}"
@@ -348,6 +447,8 @@ main() {
         restart)          cmd_restart "$@" ;;
         logs|log)         cmd_logs "$@" ;;
         status|ps)        cmd_status "$@" ;;
+        migrate)          cmd_migrate "$@" ;;
+        info|status-db)   cmd_info "$@" ;;
         init-db|initdb)   cmd_init_db "$@" ;;
         account)          cmd_account "$@" ;;
         backup)           cmd_backup "$@" ;;

@@ -30,7 +30,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
     /** 单行配置表固定的主键 */
     private static final long SETTING_ID = 1L;
 
-    /** 还没配置过网站名时的兜底值，和 sql/init_database.sql 里的默认值保持一致 */
+    /** 还没配置过网站名时的兜底值，和 db/migration/V1__baseline.sql 里的默认值保持一致 */
     private static final String DEFAULT_SITE_NAME = "ACove";
 
     /** 头图在数据库里存的是相对地址，统一以这个前缀开头 */
@@ -39,7 +39,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
     /** 头图落盘的子目录，和头像（avatar）/ 正文配图（article）分开 */
     private static final String HERO_IMAGE_DIR = "hero";
 
-    /** 各字段长度上限，和 sql/init_database.sql 里的列定义保持一致 */
+    /** 各字段长度上限，和 db/migration/V1__baseline.sql 里的列定义保持一致 */
     private static final int SITE_NAME_MAX_LENGTH = 50;
     private static final int HERO_TEXT_MAX_LENGTH = 200;
     private static final int HERO_IMAGE_MAX_LENGTH = 255;
