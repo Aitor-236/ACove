@@ -32,6 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 "/site/owner",                 // public site owner profile
                 "/site/settings",              // public site settings（网站名 / 首页头图 / 首页文字）
                 "/todo/list",                  // 前台 Todo 清单（只读；写操作都在 /admin/todo/** 下）
+                "/project/list",               // 前台开源项目列表（只读；写操作都在 /admin/project/** 下）
                 "/visit/report",               // 前台页面浏览上报（匿名，访客标识走 Cookie）
                 "/uploads/**");                // 头像等静态资源，<img> 请求不会带 token
     }

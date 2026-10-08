@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   ArrowDown,
+  Collection,
   CollectionTag,
   Document,
   EditPen,
@@ -55,6 +56,10 @@ const navGroups: NavGroup[] = [
   {
     title: '待办事项',
     items: [{ label: '待办清单', icon: List, to: '/admin/todos' }]
+  },
+  {
+    title: '开源项目',
+    items: [{ label: '项目列表', icon: Collection, to: '/admin/projects' }]
   },
   {
     title: '个人管理',
