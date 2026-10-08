@@ -1,4 +1,4 @@
-/* Aitor Blog 后台通用样式，配合 AdminLayout 的左侧导航使用。
+/* ACove 后台通用样式，配合 AdminLayout 的左侧导航使用。
    类名统一以 admin-page / admin-panel / admin-state 打头，只在后台页面里用。
    配色跟随 App.vue 的 :root token（米白 + 棕色），不要在这里写死新颜色。 */
 
@@ -20,16 +20,10 @@
 }
 
 .admin-page-title {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--text-strong);
   font-size: 24px;
   font-weight: 600;
-}
-
-.admin-page-subtitle {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
 }
 
 .admin-page-actions {

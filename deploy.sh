@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ============================================================
-# Aitor Blog：Docker 部署脚本（在服务器的仓库根目录执行）
+# ACove：Docker 部署脚本（在服务器的仓库根目录执行）
 #
 # 最简流程：
 #   ./deploy.sh init       # 生成 .env（随机 MySQL 密码 + JWT 密钥）
@@ -169,7 +169,7 @@ cmd_init() {
     chmod 600 "$ENV_FILE"
 
     log "已生成 .env：MySQL root 密码与 JWT 密钥都是随机值（权限 600）"
-    warn "请按需修改 .env 里的 BLOG_HTTP_PORT（默认 80）、域名等信息"
+    warn "请按需修改 .env 里的 SITE_DOMAIN（站点域名）、BLOG_HTTP_PORT（默认 80）等信息"
 }
 
 cmd_build() {

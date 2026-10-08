@@ -8,11 +8,11 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.aitor</groupId>
-	<artifactId>blog_backend</artifactId>
+	<groupId>com.acove</groupId>
+	<artifactId>acove-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>blog_backend</name>
-	<description/>
+	<name>acove-backend</name>
+	<description>ACove 博客系统后端</description>
 	<url/>
 	<licenses>
 		<license/>

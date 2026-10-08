@@ -1,9 +1,9 @@
 # ============================================================
-# Aitor Blog 后端镜像：多阶段构建
+# ACove 后端镜像：多阶段构建
 #   1. builder  —— 用 Maven 镜像编译出可执行 jar
 #   2. runtime  —— 只保留 JRE + jar，镜像更小、暴露面更小
 # 构建（在仓库根目录执行）：
-#   docker build -t aitor-blog-backend ./backend
+#   docker build -t acove-backend ./backend
 # 运行时的数据库 / JWT 配置全部走环境变量，见 application-docker.yml
 # 注意：这里刻意不写 `# syntax=docker/dockerfile:1`——那会让每次构建都去
 # Docker Hub 拉 frontend 镜像，国内网络容易直接超时；BuildKit 内置前端已够用。

@@ -1,9 +1,9 @@
-# Aitor Blog
+# ACove
 
-一个前后端分离的个人博客系统：前台展示文章、画廊和个人简介，后台提供文章、分类、标签的可视化管理。
+一个前后端分离、可直接自托管的博客系统：前台展示文章、画廊和个人简介，后台提供文章、分类、标签的可视化管理。仓库本身不带任何个人化配置，克隆下来按「生产部署」填好 `.env` 就能跑成你自己的站点。
 
-- 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介
-- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理
+- 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介；首页的网站名、头图和中间文字都可在后台改
+- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、个人管理、网站设置（网站名 / 首页头图 / 首页文字）、访问统计
 - 鉴权：JWT（HS256）登录态，密码以 BCrypt 哈希存储，不存明文
 
 ## 技术栈
@@ -17,11 +17,11 @@
 ## 目录结构
 
 ```
-Aitor_Blog/
+ACove/
 ├── backend/                      # Spring Boot 后端，端口 8080
 │   ├── Dockerfile                # 多阶段构建：Maven 编译 → JRE 21 运行（非 root）
-│   └── src/main/                 # java/com/aitor/blog + resources
-│       ├── java/.../auth/        # 登录：AuthController / AuthService / SysUser
+│   └── src/main/                 # java/com/acove/blog + resources
+│       ├── java/.../auth/        # 登录 + 站点资料：AuthController / SysUser / SiteController（站长、站点设置）
 │       ├── java/.../article/     # 文章、分类、标签（含 admin 侧接口）
 │       ├── java/.../visit/       # 访问统计：页面浏览上报 + 后台 PV / UV 概览与趋势
 │       ├── java/.../common/      # Result、BusinessException、JwtInterceptor、JwtUtil、PageParam
@@ -32,19 +32,20 @@ Aitor_Blog/
 │           └── application-local.yml      # 本地开发配置（gitignore，不进仓库/镜像）
 ├── frontend/                     # Vue 3 前端
 │   ├── Dockerfile                # 多阶段构建：Node 构建 → Nginx 托管
-│   ├── nginx.conf                # SPA 回退 + /api 反代到后端容器
+│   ├── nginx.conf.template       # SPA 回退 + /api 反代（域名走 .env 的 SITE_DOMAIN）
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / About / Login
-│       ├── views/admin/          # 后台页面：文章、分类、标签、个人管理、访问统计 + AdminLayout
+│       ├── views/admin/          # 后台页面：文章、分类、标签、个人管理、网站设置、访问统计 + AdminLayout
 │       ├── components/DockNav.vue
 │       ├── router/index.ts
 │       └── utils/request.ts      # axios 实例（baseURL = /api）
 ├── sql/                          # 建库与账号脚本
-    ├── init_database.sql         # 全新部署：建库 + 建表（不含任何用户）
-    ├── article_schema.sql        # 已有数据库的增量升级脚本
-    ├── user_schema.sql           # 用户表增量升级（avatar / role 两列）
-    ├── visit_schema.sql          # 访问统计增量升级（每日 PV / UV 两张表）
-    └── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
+│   ├── init_database.sql         # 全新部署：建库 + 建表（不含任何用户）
+│   ├── article_schema.sql        # 已有数据库的增量升级脚本
+│   ├── user_schema.sql           # 用户表增量升级（avatar / role 两列）
+│   ├── visit_schema.sql          # 访问统计增量升级（每日 PV / UV 两张表）
+│   ├── site_schema.sql           # 站点设置增量升级（网站名 / 首页头图 / 首页文字单行表）
+│   └── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
 ├── docker-compose.yml            # 服务器部署编排：MySQL + 后端 + 前端
 ├── deploy.sh                     # 一键部署 / 运维脚本（init / up / account / backup …）
 └── .env.example                  # 部署配置模板（复制成 .env 后使用，.env 不入库）
@@ -68,7 +69,7 @@ Aitor_Blog/
 
 ### 1. 初始化数据库
 
-全新部署（创建 `blog_db`、`sys_user` 和文章模块全部表，脚本可重复执行）：
+全新部署（创建 `blog_db` 和全部表：`sys_user`、文章模块、访问统计、站点设置，脚本可重复执行）：
 
 ```bash
 mysql -uroot -p < sql/init_database.sql
@@ -80,13 +81,25 @@ mysql -uroot -p < sql/init_database.sql
 mysql -uroot -p < sql/article_schema.sql
 ```
 
+只补用户表新增的列（`avatar` / `role`）：
+
+```bash
+mysql -uroot -p < sql/user_schema.sql
+```
+
 只补访问统计模块（每日 PV / UV）的表：
 
 ```bash
 mysql -uroot -p < sql/visit_schema.sql
 ```
 
-两个脚本都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
+只补站点设置模块（网站名 / 首页头图 / 首页文字）的表：
+
+```bash
+mysql -uroot -p < sql/site_schema.sql
+```
+
+这些脚本都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
 
 ### 2. 创建登录账号
 
@@ -94,7 +107,7 @@ mysql -uroot -p < sql/visit_schema.sql
 
 ```bash
 ./sql/init_account.sh                            # 交互式输入用户名、邮箱、密码
-./sql/init_account.sh aitor me@example.com       # 用户名和邮箱走参数，密码仍交互输入
+./sql/init_account.sh acove me@example.com       # 用户名和邮箱走参数，密码仍交互输入
 ```
 
 连接信息可以用环境变量覆盖：`BLOG_DB_HOST` / `BLOG_DB_PORT` / `BLOG_DB_NAME` / `BLOG_DB_USER` / `BLOG_DB_PASSWORD`；设置 `BLOG_ACCOUNT_PASSWORD` 可以跳过密码交互，方便自动化部署。用户名已存在时会更新它的邮箱和密码，也可以当重置密码用。
@@ -150,8 +163,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `jwt.secret-key` | 同上 | HS256 签名密钥，生产环境务必替换 |
 | `jwt.expire-time` | 同上 | token 有效期（毫秒），模板默认 24 小时 |
 | `server.port` | `backend/src/main/resources/application.yml` | 后端端口，默认 8080 |
-| `blog.upload.dir` | 同上 | 上传文件（头像、正文配图）的落盘目录，默认 `./uploads`；容器里是 `/app/uploads`（数据卷） |
-| `/api` 代理目标 | `frontend/vite.config.ts`（开发）、`frontend/nginx.conf`（生产） | 后端地址，默认 `http://localhost:8080` / `http://backend:8080` |
+| `blog.upload.dir` | 同上 | 上传文件（头像、正文配图、首页头图）的落盘目录，默认 `./uploads`；容器里是 `/app/uploads`（数据卷） |
+| `/api` 代理目标 | `frontend/vite.config.ts`（开发）、`frontend/nginx.conf.template`（生产） | 后端地址，默认 `http://localhost:8080` / `http://backend:8080` |
 | `MYSQL_ROOT_PASSWORD`、`BLOG_JWT_SECRET`、`BLOG_HTTP_PORT` 等 | 仓库根 `.env`（模板 `.env.example`） | 只影响 Docker 部署，`./deploy.sh init` 会自动填入随机密钥 |
 
 ## 接口一览
@@ -168,8 +181,9 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/category/list` | 分类列表，`articleCount` 只统计已发布文章 |
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
+| GET | `/site/settings` | 前台站点设置：网站名、首页头图、首页中间的文字（匿名可访问） |
 | POST | `/visit/report` | 前台页面浏览上报，每次切换页面调一次；访客标识由服务端 Cookie（`blog_vid`）维护，前端不用传参 |
-| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`），由后端直接托管，不在鉴权白名单里 |
+| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、首页头图 `/uploads/hero/`），由后端直接托管；`<img>` 请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
 
 后台接口（需要 `Authorization: Bearer <token>`）：
 
@@ -188,6 +202,9 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/admin/user/profile` | 个人管理：当前登录用户的用户名 / 邮箱 / 头像 |
 | POST | `/admin/user/profile/update` | 修改用户名或邮箱，只更新传入的字段，重名或格式错误返回 400 |
 | POST | `/admin/user/avatar` | 上传头像（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
+| GET | `/admin/site/settings` | 网站设置：读取网站名 / 首页头图 / 首页中间的文字 |
+| POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图 |
+| POST | `/admin/site/hero-image` | 上传首页头图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | POST | `/admin/upload/image` | 上传正文配图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif），返回 `url` 供编辑器写进 Markdown |
 | GET | `/admin/visit/overview` | 访问统计概览：今日 / 昨日的 PV、UV，以及绝对增量与增幅百分比（昨日为 0 时增幅返回 `null`） |
 | GET | `/admin/visit/trend` | 最近若干天的每日 PV / UV，`days` 默认 30、上限 90，按日期升序返回（没有数据的日子补 0） |
@@ -205,6 +222,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `article_tag` | 文章与标签的关联表，复合主键，级联删除 |
 | `visit_daily_stat` | 每日访问汇总：`stat_date`（主键）/ `pv` / `uv`，一天一行，后台统计页的数据来源 |
 | `visit_visitor` | 每日访客去重：`stat_date` + `visitor_key`（唯一键），访客当天第一次出现才让 UV 加一；`visitor_key` 是 Cookie 里 IP + User-Agent 的哈希，不存原始 IP |
+| `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `hero_text`（首页中间文字，空表示回退成网站名） |
 
 外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`。
 
@@ -248,7 +266,7 @@ npm run format              # Prettier 格式化
 | `backend/Dockerfile` | 多阶段构建：Maven 编译 → JRE 21 运行，非 root 用户，配置全部走环境变量 |
 | `backend/src/main/resources/application-docker.yml` | `docker` profile：数据库、JWT、上传目录从环境变量读取 |
 | `frontend/Dockerfile` | 多阶段构建：Node 构建（含 `vue-tsc` 类型检查）→ Nginx 托管 |
-| `frontend/nginx.conf` | SPA history 回退 + `/api` 反代到后端容器（去掉 `/api` 前缀） |
+| `frontend/nginx.conf.template` | SPA history 回退 + `/api` 反代到后端容器（去掉 `/api` 前缀）；启动时由 nginx 的 envsubst 把 `${SITE_DOMAIN}` 替换成 `.env` 里的域名 |
 | `docker/certbot-deploy-hook.sh` | certbot 续期钩子：证书更新后重载前端容器里的 nginx |
 | `docker/mysql-client.cnf` | 挂进 MySQL 容器的客户端配置，把 `mysql` / `mysqldump` 的字符集固定成 utf8mb4（不加会把中文种子数据写成乱码） |
 | `deploy.sh` | 服务器一键脚本：`init` / `up` / `account` / `backup` / `logs` / `update` …；`up` 会等到所有容器健康检查通过才返回 |
@@ -257,7 +275,7 @@ npm run format              # Prettier 格式化
 #### 1. 生成配置
 
 ```bash
-git clone <你的仓库地址> Aitor_Blog && cd Aitor_Blog
+git clone <你的仓库地址> ACove && cd ACove
 ./deploy.sh init        # 生成 .env：随机 MySQL 密码 + 随机 JWT 密钥，权限 600
 ```
 
@@ -269,6 +287,7 @@ BLOG_JWT_SECRET=<自动生成的随机串>
 BLOG_HTTP_PORT=80        # 站点对外端口，80 被占用就改成 8081 之类
 BLOG_DB_PORT=13306       # MySQL 映射到宿主机的端口（只绑 127.0.0.1）
 BLOG_DB_NAME=blog_db
+SITE_DOMAIN=acove.top    # 站点主域名：nginx 的 server_name / HTTPS 跳转 / 证书路径都用它
 ```
 
 #### 2. 启动服务
@@ -292,7 +311,7 @@ BCrypt 哈希在宿主机生成（依赖 `python3` + `bcrypt` 或 `apache2-utils
 
 #### 4. 数据、备份与恢复
 
-- 数据都在两个命名卷里：`aitor-blog_mysql-data`（数据库）和 `aitor-blog_uploads-data`（头像、正文配图）。`./deploy.sh down` 只删容器不动卷；只有 `docker compose down -v` 才会连数据一起删。
+- 数据都在两个命名卷里：`acove_mysql-data`（数据库）和 `acove_uploads-data`（头像、正文配图、首页头图）。`./deploy.sh down` 只删容器不动卷；只有 `docker compose down -v` 才会连数据一起删。
 - `./deploy.sh update` 重建容器（代码更新）不会影响卷，文章、账号、图片都还在。
 - `./deploy.sh backup` 在 `backups/<时间戳>/` 生成 `blog_db.sql`（整库导出）和 `uploads.tar.gz`，该目录已被 gitignore。
 
@@ -336,7 +355,7 @@ sudo docker run -d --rm --name acme-bootstrap \
 
 # 2) 签发（换成自己的域名和邮箱）
 sudo certbot certonly --webroot -w /var/www/certbot \
-  -d aitor.top -d www.aitor.top \
+  -d "$SITE_DOMAIN" -d "www.$SITE_DOMAIN" \
   --non-interactive --agree-tos --no-eff-email
 
 # 3) 撤掉临时容器，启动整套服务
@@ -354,11 +373,11 @@ sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
 
 几点说明：
 
-- 域名出现在 `frontend/nginx.conf` 的 `server_name`、80 端口的跳转目标和证书路径里，换域名三处一起改。
+- 域名只在一处配置：`.env` 里的 `SITE_DOMAIN`。前端 nginx 的配置文件是一份模板（`frontend/nginx.conf.template`），容器启动时由 nginx 官方镜像的 entrypoint 用 `envsubst` 把 `${SITE_DOMAIN}` 替换成你的域名，所以换域名只要改 `.env` 再 `./deploy.sh up`，不用再动 nginx 配置。
 - 只有证书路径 `/etc/letsencrypt/live/<域名>/` 变了才需要动配置；续期本身只更新文件内容，`nginx -s reload` 即可生效。
 - 证书和校验目录都是只读挂载，容器里的 nginx 不会去改它们。
 - 前端资源路径和 `/api` 都是同源相对路径，换域名或协议不需要重新构建镜像。
-- 想省掉 80 端口的跳转、让 HTTP 也能直接打开站点，把 `frontend/nginx.conf` 里 80 段的 `location /` 换成和 443 段一样的站点配置即可（不推荐，HTTPS 应该是唯一入口）。
+- 想省掉 80 端口的跳转、让 HTTP 也能直接打开站点，把 `frontend/nginx.conf.template` 里 80 段的 `location /` 换成和 443 段一样的站点配置即可（不推荐，HTTPS 应该是唯一入口）。
 
 #### 6. 常见问题
 
@@ -375,7 +394,7 @@ sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
 ### 不用 Docker 的手动部署
 
 1. 前端 `npm run build`，把 `frontend/dist/` 交给 Nginx 托管；后端 `./mvnw clean package` 得到可执行 jar，用 `java -jar` 运行。
-2. 生产环境要把 `/api` 反代到后端并去掉 `/api` 前缀（可直接参考 `frontend/nginx.conf`），否则前端请求会全部 404。
+2. 生产环境要把 `/api` 反代到后端并去掉 `/api` 前缀（可直接参考 `frontend/nginx.conf.template`），否则前端请求会全部 404。
 3. `jwt.secret-key`、MySQL 密码不要沿用开发环境的值，`application-local.yml` 也不建议打进镜像（`backend/.dockerignore` 已排除）。
 4. 前端是 history 模式的 SPA，Nginx 需要配置回退（找不到文件时返回 `index.html`），否则直接刷新 `/articles/1` 这类地址会 404。
 5. 上传目录要可写并持久化，否则图片会在重装服务后丢失。
@@ -385,5 +404,6 @@ sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
 - 画廊页（`/gallery`）和个人简介页（`/about`）目前是页面内静态数据，等后端接口就绪后再替换。
 - `sys_user.role` 目前只用来决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。权限还没做，后台接口仍然只校验"是否登录"，任何登录用户都能进后台。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
-- 头像和正文配图都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/` 与 `backend/uploads/article/`，已加入 `.gitignore`），数据库只存 `/uploads/xxx/yyy.png` 这样的相对地址：头像由前端加 `/api` 前缀访问，正文里的图片由 `frontend/src/utils/markdown.ts` 在渲染时补上 `/api` 前缀（正文里手写 `/uploads/...` 也能正常显示）；部署时该目录要可写并且要持久化，否则图片会在重建容器后丢失（Docker 部署已由 `aitor-blog_uploads-data` 数据卷处理）。
-- `sql/init_database.sql` 与 `sql/article_schema.sql` 有一部分重复的建表语句（前者面向全新部署，后者面向文章模块的增量升级），修改表结构时两个文件都要同步；用户表所在的登录模块增量升级用 `sql/user_schema.sql`。
+- 头像、正文配图和首页头图都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/` 与 `backend/uploads/hero/`，已加入 `.gitignore`），数据库只存 `/uploads/xxx/yyy.png` 这样的相对地址：头像和头图由前端加 `/api` 前缀访问，正文里的图片由 `frontend/src/utils/markdown.ts` 在渲染时补上 `/api` 前缀（正文里手写 `/uploads/...` 也能正常显示）；部署时该目录要可写并且要持久化，否则图片会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
+- `sql/init_database.sql` 与 `sql/article_schema.sql` 有一部分重复的建表语句（前者面向全新部署，后者面向文章模块的增量升级），修改表结构时两个文件都要同步；增量升级脚本按模块分文件：用户 `sql/user_schema.sql`、访问统计 `sql/visit_schema.sql`、站点设置 `sql/site_schema.sql`。
+- 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；表结构变更时 `sql/init_database.sql` 与 `sql/site_schema.sql` 要同步。

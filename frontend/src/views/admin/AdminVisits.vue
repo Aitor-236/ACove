@@ -231,9 +231,6 @@ onMounted(loadData)
     <header class="admin-page-header">
       <div>
         <h1 class="admin-page-title">访问统计</h1>
-        <p class="admin-page-subtitle">
-          只统计前台页面的浏览（后台与登录页不计入），按天记录在 MySQL，没有用 Redis
-        </p>
       </div>
 
       <div class="admin-page-actions">

@@ -31,6 +31,14 @@ interface SiteOwner {
   avatar: string
 }
 
+/** 站点设置（来自 GET /site/settings）：网站名、首页头图、首页中间的文字 */
+interface SiteSettings {
+  siteName: string
+  /** 头图相对地址，空字符串表示还没设置 */
+  heroImage: string
+  heroText: string
+}
+
 const latestArticles = ref<ArticleItem[]>([])
 /** 已发布文章总数（来自 GET /article/list 的 total） */
 const articleTotal = ref(0)
@@ -39,13 +47,30 @@ const artworkTotal = ref(0)
 const articlesLoading = ref(true)
 const articlesError = ref('')
 /** 站长名字：接口回来之前先用默认值，避免首页闪一下空白 */
-const ownerName = ref('Aitor')
+const ownerName = ref('ACove')
 /** 站长头像相对地址，空字符串表示还没设置头像 */
 const ownerAvatar = ref('')
 /** 没有自定义头像就退回 public/avatar.svg 那张占位图 */
 const ownerAvatarUrl = computed(() =>
   ownerAvatar.value ? `/api${ownerAvatar.value}` : '/avatar.svg'
 )
+/** 站点设置：网站名 + 首页中间文字 + 头图，都由后台「网站设置」维护 */
+const siteName = ref('ACove')
+const heroImage = ref('')
+const heroText = ref('')
+/** 头图正中间那行字：没单独配就用网站名 */
+const heroTitle = computed(() => heroText.value.trim() || siteName.value.trim() || 'ACove')
+/** 首页头图背景：统一压暗层（保证白字可读）+ 底部向页面底色过渡，有自定义头图时再叠一层图 */
+const heroBackground = computed(() => {
+  const layers = [
+    'linear-gradient(to bottom, rgba(246, 241, 231, 0) 55%, var(--bg-cream, #f6f1e7) 100%)',
+    'linear-gradient(rgba(63, 46, 34, 0.55), rgba(63, 46, 34, 0.55))'
+  ]
+  if (heroImage.value) {
+    layers.push(`url('/api${heroImage.value}')`)
+  }
+  return { backgroundImage: layers.join(', ') }
+})
 /** 整屏滚动容器，用来保存 / 恢复滚动位置 */
 const pageRef = ref<HTMLElement | null>(null)
 
@@ -80,8 +105,19 @@ async function loadSiteOwner() {
   }
 }
 
+async function loadSiteSettings() {
+  try {
+    const res = (await request.get('/site/settings')) as { data: SiteSettings }
+    siteName.value = res.data.siteName || siteName.value
+    heroImage.value = res.data.heroImage || ''
+    heroText.value = res.data.heroText || ''
+  } catch {
+    // 拿不到站点设置就用内置默认值，不影响首页其它内容
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([loadLatestArticles(), loadSiteOwner()])
+  await Promise.all([loadLatestArticles(), loadSiteOwner(), loadSiteSettings()])
   // 文章渲染完成后恢复滚动位置；内容高度可能还要再稳定一两帧，
  await nextTick()
   // 所以设置后校验一次，没到位就再等一帧重试，避免被截断到较小的值
@@ -102,8 +138,8 @@ onBeforeRouteLeave(() => {
 <template>
   <div ref="pageRef" class="home-page">
     <!-- 上 2/5：主视觉铺满整幅横向区域，不套框 -->
-    <header class="home-hero">
-      <h1 class="hero-title">Welcome to Aitor</h1>
+    <header class="home-hero" :style="heroBackground">
+      <h1 class="hero-title">{{ heroTitle }}</h1>
     </header>
 
     <!-- 下 3/5：左侧工具栏 + 右侧主体内容 -->
@@ -187,12 +223,8 @@ onBeforeRouteLeave(() => {
   width: 100%;
   height: 55vh;
   overflow: hidden;
-  /* 底图 + 统一压暗层（保证白字可读）+ 底部向页面底色过渡 */
+  /* 底色打底；压暗层、底部过渡和自定义头图由 :style 里的 heroBackground 提供 */
   background-color: #4a3728;
-  background-image:
-    linear-gradient(to bottom, rgba(246, 241, 231, 0) 55%, var(--bg-cream, #f6f1e7) 100%),
-    linear-gradient(rgba(63, 46, 34, 0.55), rgba(63, 46, 34, 0.55)),
-    url('/kaisa.jpg');
   background-position: center;
   background-size: cover;
   background-repeat: no-repeat;
