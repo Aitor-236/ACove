@@ -403,3 +403,4 @@ docker compose exec -T mysql sh -c \
 - 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），以后改表结构只需新增 `V2__xxx.sql`、`V3__xxx.sql`。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
+- 后台「文章管理 → 编辑文章」的正文编辑器是 Typodown（`@vemonet/typodown`，CodeMirror 6 实时预览：光标所在结构显示原始标记、移开即渲染），包在 `frontend/src/components/MarkdownEditor.vue` 里，主题写在 `frontend/src/styles/typodown.css`；它只有 0.0.x、单人维护、也没有给外部加扩展的入口，`::: code-group` 在编辑器里只能按源码文本显示。**待办**：以后自己用 CodeMirror 6 写一套替换它（含把 `::: code-group` 在编辑器里也渲染成标签页），新项目占位在 `~/Desktop/AEditor`（技术栈待定）。

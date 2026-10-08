@@ -39,9 +39,13 @@ onMounted(async () => {
   --text-strong: #3f2e22;
   --text-body: rgba(74, 54, 41, 0.78);
   --text-muted: rgba(74, 54, 41, 0.58);
+  /* 最淡的一档正文色，后台 Markdown 编辑器的次要标记用（styles/typodown.css） */
+  --text-faint: rgba(74, 54, 41, 0.38);
   --panel-bg: #fffdf9;
   --panel-alt-bg: #f8f2e7;
   --panel-border: rgba(138, 90, 59, 0.14);
+  /* 比 --panel-border 重一点的描边，编辑器这类要看得见边界的地方用 */
+  --panel-border-strong: rgba(138, 90, 59, 0.22);
   --panel-shadow: 0 18px 44px rgba(120, 88, 58, 0.12);
   /* 访问统计里涨 / 跌的文字色，别在组件里写死颜色 */
   --trend-up: #4a7a52;

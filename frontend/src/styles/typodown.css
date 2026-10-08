@@ -1,0 +1,162 @@
+/*
+ * Typodown 编辑器主题（后台正文编辑器，见 components/MarkdownEditor.vue）。
+ *
+ * Typodown 的配色全部走它自己的 --td-* / --syn-* 变量，这里把它们映射到 App.vue
+ * :root 里的米白 + 棕色 token，让编辑器跟后台面板、正文代码块保持同一套观感。
+ *
+ * 为什么是全局表而不是组件里的 <style scoped>：.typodown 这个包装元素是
+ * createTypodown() 动态创建的，拿不到 Vue 的 scoped 属性，scoped 选择器选不中它。
+ *
+ * 主题名 'acove' 由 MarkdownEditor.vue 传给 createTypodown({ theme })，
+ * Typodown 会把它写到包装元素的 data-td-theme 上（setTheme 里是 dataset.tdTheme = theme）。
+ */
+
+.typodown[data-td-theme='acove'] {
+  --td-bg: var(--panel-bg);
+  --td-fg: var(--text-strong);
+  --td-muted: var(--text-muted);
+  --td-faint: var(--text-faint);
+  --td-border: var(--panel-border-strong);
+  --td-border-muted: var(--panel-border);
+  --td-heading-border: var(--panel-border);
+  --td-link: var(--accent-brown);
+  --td-block-bg: var(--panel-alt-bg);
+  --td-table-header-bg: var(--panel-alt-bg);
+  --td-table-alt-bg: var(--panel-alt-bg);
+  --td-selection: rgba(185, 138, 94, 0.32);
+
+  /* GFM 提示块（> [!NOTE]）借用站内已有的状态色，不引新颜色 */
+  --td-note: var(--accent-brown);
+  --td-tip: var(--trend-up);
+  --td-important: var(--accent-brown-soft);
+  --td-warning: var(--accent-brown-soft);
+  --td-caution: var(--trend-down);
+
+  /* 行内代码：浅棕底 + 深字，和 styles/markdown.css 的行内代码一致 */
+  --td-code-bg: rgba(138, 90, 59, 0.12);
+  --td-code-fg: var(--text-strong);
+  /* 围栏代码块：深棕底，和前台正文里的代码块一致 */
+  --td-code-block-bg: var(--code-bg);
+
+  --td-font:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+  --td-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
+
+  /* 代码高亮取 styles/markdown.css 里同一组暖色 token */
+  --syn-keyword: var(--code-keyword);
+  --syn-string: var(--code-string);
+  --syn-comment: var(--code-comment);
+  --syn-number: var(--code-number);
+  --syn-function: var(--code-title);
+  --syn-variable: var(--code-attr);
+  --syn-tag: var(--code-type);
+  --syn-attr: var(--code-attr);
+  --syn-property: var(--code-attr);
+  --syn-boolean: var(--code-number);
+  --syn-iri: var(--code-string);
+  --syn-prefixed: var(--code-title);
+}
+
+/*
+ * Typodown 让行内代码和围栏代码共用一个 --td-code-fg，但这里两者底色一深一浅：
+ * 行内代码要深字浅底，围栏代码块要米白字深底，所以单独给围栏代码补一条。
+ */
+.typodown[data-td-theme='acove'] .cm-td-code,
+.typodown[data-td-theme='acove'] .cm-td-code-widget {
+  color: var(--code-fg);
+}
+
+/* 代码块右上角的复制按钮：深底上要用米白色，默认的 --td-muted 在深棕上看不清 */
+.typodown[data-td-theme='acove'] .cm-td-code .cm-td-copy,
+.typodown[data-td-theme='acove'] .cm-td-code-widget .cm-td-copy {
+  color: var(--code-muted);
+}
+
+/* ---------- 编辑器外壳：接上后台表单字段的观感（实色底 + 描边 + 圆角） ---------- */
+
+.markdown-editor {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 16px;
+  background: var(--panel-bg);
+}
+
+.markdown-editor:focus-within {
+  border-color: var(--accent-brown-soft);
+}
+
+/* Typodown 挂在自己那层空壳里，这层要撑满高度，否则 .typodown 的 height:100% 会塌 */
+.markdown-editor-surface {
+  height: 100%;
+}
+
+/* 后台正文比前台详情页窄，字号收一档（Typodown 默认 16px） */
+.markdown-editor .typodown .cm-scroller {
+  font-size: 15px;
+}
+
+/*
+ * 后台不需要任何浮动工具栏：连左上角那个「显示格式工具栏」的小圆按钮一起藏掉。
+ * Typodown 不管 toolbar 传什么，都会往包装元素里 prepend 一个 .cm-td-toolbar-anchor，
+ * 工具栏本体和那个圆形按钮都在它里面。
+ */
+.markdown-editor .typodown .cm-td-toolbar-anchor {
+  display: none !important;
+}
+
+/* ---------- 右上角的「插入图片」小按钮 ---------- */
+
+.markdown-editor-image {
+  display: inline-flex;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 5;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--panel-border-strong);
+  border-radius: 10px;
+  color: var(--accent-brown);
+  font-size: 15px;
+  background: var(--panel-bg);
+  box-shadow: 0 6px 18px var(--panel-border);
+  cursor: pointer;
+  /* 常驻但低调，鼠标进编辑区再亮起来，别压住正文 */
+  opacity: 0.72;
+  transition:
+    opacity 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.markdown-editor:hover .markdown-editor-image,
+.markdown-editor:focus-within .markdown-editor-image {
+  opacity: 1;
+}
+
+.markdown-editor-image:hover:not(:disabled) {
+  border-color: var(--accent-brown-soft);
+  background: var(--panel-alt-bg);
+}
+
+.markdown-editor-image:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+/* 隐藏原生文件选择框，点右上角按钮时由它弹出系统选择窗口 */
+.markdown-editor-file {
+  display: none;
+}

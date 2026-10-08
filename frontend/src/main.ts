@@ -6,6 +6,7 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import './styles/markdown.css'
+import './styles/typodown.css'
 
 const app = createApp(App)
 
