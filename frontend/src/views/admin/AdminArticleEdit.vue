@@ -1,18 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
-import {
-  ElInput,
-  ElMessage,
-  ElMessageBox,
-  ElSelect,
-  type FormInstance,
-  type FormRules
-} from 'element-plus'
-import { Picture, Plus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox, ElSelect, type FormInstance, type FormRules } from 'element-plus'
+import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import { renderMarkdown } from '@/utils/markdown'
-import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 
 /** 后台文章详情（来自 GET /admin/article/{id}） */
 interface AdminArticleDetail {
@@ -62,9 +54,8 @@ const route = useRoute()
 const router = useRouter()
 
 const formRef = ref<FormInstance>()
-/** 正文输入框，插入图片时要拿它内部 textarea 的光标位置 */
-const contentRef = ref<InstanceType<typeof ElInput> | null>(null)
-const imageInputRef = ref<HTMLInputElement | null>(null)
+/** 正文编辑器（Typodown 封装），插入图片时往它的光标处塞 Markdown */
+const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
 const form = reactive({
   title: '',
   summary: '',
@@ -135,19 +126,13 @@ const loading = ref(false)
 const saving = ref(false)
 const publishing = ref(false)
 const unpublishing = ref(false)
+/** 正文图片正在上传：编辑器右上角那个按钮跟着转圈 */
 const uploadingImage = ref(false)
 const dirty = ref(false)
 /** 回填表单期间不把接口返回的内容当成用户修改 */
 const hydrating = ref(false)
 
 const isEditMode = computed(() => articleId.value !== null)
-
-const renderedContent = computed(() => {
-  if (!form.content.trim()) return '<p class="preview-placeholder">正文预览会显示在这里</p>'
-  return renderMarkdown(form.content)
-})
-
-const wordCount = computed(() => form.content.replace(/\s/g, '').length)
 
 function formatDateTime(value?: string | null) {
   return value ? value.replace('T', ' ').slice(0, 16) : '—'
@@ -283,47 +268,7 @@ function buildPayload() {
   }
 }
 
-/**
- * 把一段 Markdown 插到正文光标处（没有光标就追加到末尾），
- * 前后自动补齐换行，插完把光标停在片段后面，方便接着写。
- */
-function insertIntoContent(snippet: string) {
-  const textarea = contentRef.value?.textarea
-  const source = form.content
-  const start = textarea?.selectionStart ?? source.length
-  const end = textarea?.selectionEnd ?? start
-
-  const before = source.slice(0, start)
-  const after = source.slice(end)
-  const prefix = !before ? '' : before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n'
-  const suffix = after.startsWith('\n') ? '' : '\n'
-  const inserted = `${prefix}${snippet}${suffix}`
-
-  form.content = before + inserted + after
-  void nextTick(() => {
-    if (!textarea) return
-    textarea.focus()
-    const caret = start + inserted.length
-    textarea.setSelectionRange(caret, caret)
-  })
-}
-
-function pickImage() {
-  imageInputRef.value?.click()
-}
-
-/** 选择图片后立刻上传并插入正文，中间不弹二次确认。 */
-async function onImagePick(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  // 清空 value，否则连续选同一张图片不会再触发 change
-  input.value = ''
-  if (file) {
-    await insertImage(file)
-  }
-}
-
-/** 上传图片并把 Markdown 图片语法插到光标处，预览区和前台详情页都会显示。 */
+/** 上传图片并把 Markdown 图片语法插到光标处，编辑器和前台详情页都会显示。 */
 async function insertImage(file: File) {
   if (!file.type.startsWith('image/')) {
     ElMessage.warning('只能插入图片文件')
@@ -344,7 +289,7 @@ async function insertImage(file: File) {
       data: UploadedImage
     }
     const alt = file.name.replace(/\.[^.]+$/, '').replace(/[[\]]/g, '') || '图片'
-    insertIntoContent(`![${alt}](${res.data.url})`)
+    editorRef.value?.insertMarkdown(`![${alt}](${res.data.url})`)
     ElMessage.success('图片已插入正文')
   } catch {
     // 错误提示由 request 拦截器统一处理
@@ -353,22 +298,13 @@ async function insertImage(file: File) {
   }
 }
 
-/** 截图直接粘贴时自动上传；粘贴普通文本不拦截。 */
-function onPasteImage(event: Event) {
-  const files = Array.from((event as ClipboardEvent).clipboardData?.files ?? [])
-  const image = files.find((item) => item.type.startsWith('image/'))
-  if (!image) return
-  event.preventDefault()
-  void insertImage(image)
-}
-
-/** 把图片文件拖到编辑区也能插入。 */
-function onDropImage(event: Event) {
-  const files = Array.from((event as DragEvent).dataTransfer?.files ?? [])
-  const image = files.find((item) => item.type.startsWith('image/'))
-  if (!image) return
-  event.preventDefault()
-  void insertImage(image)
+/**
+ * 编辑器里粘贴 / 拖进来的图片文件：在编辑器的光标处逐个插入。
+ */
+async function onImageFiles(files: File[]) {
+  for (const file of files) {
+    await insertImage(file)
+  }
 }
 
 /**
@@ -612,54 +548,19 @@ onMounted(async () => {
           </el-form-item>
 
           <el-form-item label="正文（Markdown）" prop="content">
-            <div class="content-toolbar">
-              <el-button size="small" :icon="Picture" :loading="uploadingImage" @click="pickImage">
-                插入图片
-              </el-button>
-              <span class="content-toolbar-tip">
-                支持 png / jpg / webp / gif，单张不超过 5MB
-              </span>
-            </div>
-
-            <input
-              ref="imageInputRef"
-              class="file-input"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
-              @change="onImagePick"
-            />
-
-            <el-input
-              ref="contentRef"
+            <!-- 正文用 Typodown：光标所在结构显示源码，移开即渲染（组件见 components/MarkdownEditor.vue） -->
+            <MarkdownEditor
+              ref="editorRef"
               v-model="form.content"
-              type="textarea"
-              :rows="20"
-              resize="vertical"
-              class="content-input"
-              placeholder="# 标题&#10;正文支持 Markdown：列表、代码块、引用、图片等"
-              @paste="onPasteImage"
-              @drop="onDropImage"
-              @dragover.prevent
+              placeholder="# 标题：正文直接写 Markdown，列表、表格、代码块、引用、图片都支持"
+              :uploading="uploadingImage"
+              @image-files="onImageFiles"
             />
           </el-form-item>
         </el-form>
       </section>
 
       <aside class="editor-side">
-        <section class="admin-panel preview-panel">
-          <div class="panel-header">
-            <h2>正文预览</h2>
-            <span class="panel-meta">{{ wordCount }} 字</span>
-          </div>
-          <!-- 预览内容已用 DOMPurify 清洗；代码组的切换用事件委托挂在这个容器上 -->
-          <div
-            class="markdown-body"
-            v-html="renderedContent"
-            @click="handleCodeGroupClick"
-            @keydown="handleCodeGroupKeydown"
-          ></div>
-        </section>
-
         <section v-if="isEditMode" class="admin-panel meta-panel">
           <h2>文章信息</h2>
           <dl class="meta-list">
@@ -772,7 +673,8 @@ onMounted(async () => {
 
 .editor-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  /* 正文编辑器已经自带实时预览，右侧只剩「文章信息」，所以这里收窄成一条侧栏 */
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
   gap: 18px;
   align-items: start;
 }
@@ -835,33 +737,6 @@ onMounted(async () => {
   line-height: 1.5;
 }
 
-.content-toolbar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  width: 100%;
-  margin-bottom: 10px;
-}
-
-.content-toolbar-tip {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-/* 隐藏原生文件选择框，点「插入图片」按钮时由它弹出系统选择窗口 */
-.file-input {
-  display: none;
-}
-
-.content-input :deep(textarea) {
-  font-family:
-    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'PingFang SC', monospace;
-  font-size: 14px;
-  line-height: 1.7;
-}
-
 .editor-side {
   display: flex;
   position: sticky;
@@ -870,105 +745,15 @@ onMounted(async () => {
   gap: 18px;
 }
 
-.preview-panel,
 .meta-panel {
   padding: 18px 20px 22px;
 }
 
-.panel-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.panel-header h2,
 .meta-panel h2 {
   margin: 0;
   color: var(--text-strong);
   font-size: 16px;
   font-weight: 600;
-}
-
-.panel-meta {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.markdown-body {
-  max-height: 60vh;
-  overflow-y: auto;
-  color: var(--text-body);
-  font-size: 14px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-  /* 预览面板比详情页窄，代码块和表格跟着收紧一点（样式主体在 styles/markdown.css） */
-  --markdown-gap: 12px;
-  --markdown-font-size: 13px;
-  --code-block-radius: 14px;
-  --code-block-padding: 14px;
-  --code-block-padding-top: 34px;
-  --code-label-top: 11px;
-  --code-label-left: 14px;
-}
-
-.markdown-body :deep(.preview-placeholder) {
-  color: var(--text-muted);
-}
-
-/* 预览面板只有 ~380px 宽：表格按自然列宽渲染，超宽时在表格内部横向滚动，
-   否则 4 列以上会被压成一格一格的花卷（前台详情页版心宽，仍是撑满 100% 不滚动） */
-.markdown-body :deep(table) {
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  margin: 18px 0 10px;
-  color: var(--text-strong);
-  line-height: 1.4;
-}
-
-.markdown-body :deep(h1) {
-  font-size: 20px;
-}
-
-.markdown-body :deep(h2) {
-  font-size: 18px;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 16px;
-}
-
-.markdown-body :deep(p) {
-  margin: 0 0 12px;
-}
-
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  margin: 0 0 12px;
-  padding-left: 22px;
-}
-
-.markdown-body :deep(blockquote) {
-  margin: 0 0 12px;
-  padding: 8px 14px;
-  border-left: 3px solid var(--accent-brown-soft);
-  border-radius: 0 12px 12px 0;
-  color: var(--text-body);
-  background: var(--panel-alt-bg);
-}
-
-.markdown-body :deep(img) {
-  display: block;
-  max-width: 100%;
-  margin: 0 auto 12px;
-  border-radius: 14px;
 }
 
 .meta-list {
@@ -1001,10 +786,6 @@ onMounted(async () => {
 
   .editor-side {
     position: static;
-  }
-
-  .markdown-body {
-    max-height: 420px;
   }
 }
 </style>

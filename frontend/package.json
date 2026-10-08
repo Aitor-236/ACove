@@ -12,6 +12,7 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@vemonet/typodown": "0.0.5",
     "axios": "^1.20.0",
     "dompurify": "^3.4.15",
     "element-plus": "^2.14.5",

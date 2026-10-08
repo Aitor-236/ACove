@@ -12,8 +12,14 @@ interface SiteSetting {
 }
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
-/** 头图体积上限，和后端 multipart 的 5MB 保持一致 */
-const IMAGE_MAX_SIZE = 5 * 1024 * 1024
+
+/** 原图体积上限：再大就不在浏览器里解码了，避免页面卡死（后端 multipart 上限 5MB，裁剪后的图远小于它） */
+const SOURCE_MAX_SIZE = 20 * 1024 * 1024
+/** 裁剪取景框（16:9 横图，和首页头图与后台缩略图一致）与导出图宽度 */
+const CROP_VIEW_WIDTH = 320
+const CROP_VIEW_HEIGHT = 180
+const CROP_OUTPUT_WIDTH = 1600
+const CROP_MAX_SCALE = 4
 
 const loading = ref(false)
 /** 设置没读出来时不给空表单，直接提示重新加载，免得看着像"值没了" */
@@ -29,15 +35,48 @@ const savingSiteName = ref(false)
 const savingHeroText = ref(false)
 
 const heroInputRef = ref<HTMLInputElement | null>(null)
-/** 已经选好但还没上传的头图，以及它的本地预览地址 */
+/** 已经裁好但还没上传的头图，以及它的本地预览地址 */
 const pendingHeroFile = ref<File | null>(null)
 const pendingHeroPreview = ref('')
 const uploading = ref(false)
+
+/** 最近一次选择的原图，用于"重新裁剪" */
+const sourceHeroFile = ref<File | null>(null)
+/** 裁剪弹窗状态 */
+const cropVisible = ref(false)
+const cropImageRef = ref<HTMLImageElement | null>(null)
+const cropImageUrl = ref('')
+const cropNatural = ref({ width: 0, height: 0 })
+/** 用户缩放倍数，1 表示"刚铺满取景框"，最大 CROP_MAX_SCALE */
+const cropScale = ref(1)
+/** 图片中心相对取景框中心的偏移（CSS 像素），拖动时改它 */
+const cropOffset = ref({ x: 0, y: 0 })
+const cropRendering = ref(false)
 
 /** 已保存的头图加 /api 前缀访问 */
 const savedHeroUrl = computed(() => (settings.value.heroImage ? `/api${settings.value.heroImage}` : ''))
 /** 头图显示：选了新图先看新图，没选就显示当前已保存的那张 */
 const heroPreviewUrl = computed(() => pendingHeroPreview.value || savedHeroUrl.value)
+
+/** 1 倍时把图片等比放大到刚好盖住取景框的比例 */
+const cropBaseScale = computed(() => {
+  const { width, height } = cropNatural.value
+  if (!width || !height) return 1
+  return Math.max(CROP_VIEW_WIDTH / width, CROP_VIEW_HEIGHT / height)
+})
+
+/** 图片渲染到取景框里的尺寸和位置 */
+const cropImageStyle = computed(() => {
+  const scale = cropBaseScale.value * cropScale.value
+  const width = cropNatural.value.width * scale
+  const height = cropNatural.value.height * scale
+  return {
+    width: `${width}px`,
+    height: `${height}px`,
+    left: `${(CROP_VIEW_WIDTH - width) / 2 + cropOffset.value.x}px`,
+    top: `${(CROP_VIEW_HEIGHT - height) / 2 + cropOffset.value.y}px`
+  }
+})
 
 const siteNameRules: FormRules<typeof siteNameForm> = {
   siteName: [
@@ -116,7 +155,7 @@ function pickHero() {
   heroInputRef.value?.click()
 }
 
-function onHeroChange(event: Event) {
+async function onHeroChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0] ?? null
   // 清空 value，同一个文件连选两次也能触发 change
@@ -127,14 +166,13 @@ function onHeroChange(event: Event) {
     ElMessage.warning('头图仅支持 png / jpg / webp / gif 图片')
     return
   }
-  if (file.size > IMAGE_MAX_SIZE) {
-    ElMessage.warning('头图不能超过 5MB，请先压缩一下再上传')
+  if (file.size > SOURCE_MAX_SIZE) {
+    ElMessage.warning('原图不能超过 20MB，请先压缩一下再上传')
     return
   }
 
-  clearPendingHero()
-  pendingHeroFile.value = file
-  pendingHeroPreview.value = URL.createObjectURL(file)
+  // 头图是 16:9 的横图，选好图先进裁剪框选一下再上传
+  await openHeroCrop(file)
 }
 
 function clearPendingHero() {
@@ -143,6 +181,185 @@ function clearPendingHero() {
     pendingHeroPreview.value = ''
   }
   pendingHeroFile.value = null
+}
+
+/* ---------- 裁剪头图 ---------- */
+
+/** 读原图尺寸并打开裁剪框选，选好后原始文件留着给"重新裁剪"用 */
+async function openHeroCrop(file: File) {
+  const url = URL.createObjectURL(file)
+  try {
+    const image = await loadImage(url)
+    releaseCropUrl()
+    sourceHeroFile.value = file
+    cropImageUrl.value = url
+    cropNatural.value = { width: image.naturalWidth, height: image.naturalHeight }
+    resetCrop()
+    cropVisible.value = true
+  } catch {
+    URL.revokeObjectURL(url)
+    ElMessage.error('图片读取失败，换一张试试')
+  }
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('图片读取失败'))
+    image.src = url
+  })
+}
+
+function releaseCropUrl() {
+  if (cropImageUrl.value) {
+    URL.revokeObjectURL(cropImageUrl.value)
+    cropImageUrl.value = ''
+  }
+}
+
+function resetCrop() {
+  cropScale.value = 1
+  cropOffset.value = { x: 0, y: 0 }
+}
+
+/** 把偏移限制在"图片始终盖住取景框"的范围内，拖不出空白边 */
+function clampOffset() {
+  const scale = cropBaseScale.value * cropScale.value
+  const width = cropNatural.value.width * scale
+  const height = cropNatural.value.height * scale
+  const maxX = Math.max(0, (width - CROP_VIEW_WIDTH) / 2)
+  const maxY = Math.max(0, (height - CROP_VIEW_HEIGHT) / 2)
+  cropOffset.value = {
+    x: Math.min(maxX, Math.max(-maxX, cropOffset.value.x)),
+    y: Math.min(maxY, Math.max(-maxY, cropOffset.value.y))
+  }
+}
+
+/** 缩放时让取景框中心对应的那块图保持不动，放大后才不会跑偏 */
+function handleZoom(value: number | number[]) {
+  const next = Array.isArray(value) ? value[0] : value
+  const prev = cropScale.value
+  if (typeof next !== 'number' || !Number.isFinite(next)) return
+  if (next === prev || !cropNatural.value.width) return
+
+  const prevScale = cropBaseScale.value * prev
+  const prevWidth = cropNatural.value.width * prevScale
+  const prevHeight = cropNatural.value.height * prevScale
+  const centerX =
+    (CROP_VIEW_WIDTH / 2 - ((CROP_VIEW_WIDTH - prevWidth) / 2 + cropOffset.value.x)) / prevScale
+  const centerY =
+    (CROP_VIEW_HEIGHT / 2 - ((CROP_VIEW_HEIGHT - prevHeight) / 2 + cropOffset.value.y)) / prevScale
+
+  cropScale.value = next
+  const scale = cropBaseScale.value * next
+  const width = cropNatural.value.width * scale
+  const height = cropNatural.value.height * scale
+  cropOffset.value = {
+    x: CROP_VIEW_WIDTH / 2 - centerX * scale - (CROP_VIEW_WIDTH - width) / 2,
+    y: CROP_VIEW_HEIGHT / 2 - centerY * scale - (CROP_VIEW_HEIGHT - height) / 2
+  }
+  clampOffset()
+}
+
+let dragging = false
+let dragStart = { x: 0, y: 0, offsetX: 0, offsetY: 0 }
+
+function onPointerDown(event: PointerEvent) {
+  if (!cropImageUrl.value) return
+  dragging = true
+  dragStart = {
+    x: event.clientX,
+    y: event.clientY,
+    offsetX: cropOffset.value.x,
+    offsetY: cropOffset.value.y
+  }
+  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
+  event.preventDefault()
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (!dragging) return
+  cropOffset.value = {
+    x: dragStart.offsetX + (event.clientX - dragStart.x),
+    y: dragStart.offsetY + (event.clientY - dragStart.y)
+  }
+  clampOffset()
+}
+
+function onPointerUp(event: PointerEvent) {
+  if (!dragging) return
+  dragging = false
+  ;(event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId)
+}
+
+function onWheelZoom(event: WheelEvent) {
+  handleZoom(Math.min(CROP_MAX_SCALE, Math.max(1, cropScale.value - event.deltaY * 0.002)))
+}
+
+/** 把取景框里看到的那块画到 canvas 上，导出一张 16:9 横图作为待上传文件 */
+async function confirmCrop() {
+  const image = cropImageRef.value
+  const { width: naturalWidth, height: naturalHeight } = cropNatural.value
+  if (!image || !naturalWidth || !naturalHeight) return
+
+  cropRendering.value = true
+  try {
+    const scale = cropBaseScale.value * cropScale.value
+    const left = (CROP_VIEW_WIDTH - naturalWidth * scale) / 2 + cropOffset.value.x
+    const top = (CROP_VIEW_HEIGHT - naturalHeight * scale) / 2 + cropOffset.value.y
+    const sourceWidth = CROP_VIEW_WIDTH / scale
+    const sourceHeight = CROP_VIEW_HEIGHT / scale
+    const sourceX = Math.min(Math.max(-left / scale, 0), Math.max(0, naturalWidth - sourceWidth))
+    const sourceY = Math.min(
+      Math.max(-top / scale, 0),
+      Math.max(0, naturalHeight - sourceHeight)
+    )
+
+    // 小图不放大，避免导出一张糊的图
+    const outputWidth = Math.max(320, Math.min(CROP_OUTPUT_WIDTH, Math.round(sourceWidth)))
+    const outputHeight = Math.round((outputWidth * CROP_VIEW_HEIGHT) / CROP_VIEW_WIDTH)
+    const canvas = document.createElement('canvas')
+    canvas.width = outputWidth
+    canvas.height = outputHeight
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('当前浏览器不支持裁剪')
+
+    // 透明图（png / webp）落在白底上，不会变成黑块
+    context.fillStyle = '#ffffff'
+    context.fillRect(0, 0, outputWidth, outputHeight)
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(
+      image,
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0,
+      0,
+      outputWidth,
+      outputHeight
+    )
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', 0.92)
+    )
+    if (!blob) throw new Error('裁剪导出失败')
+
+    applyPendingHero(new File([blob], 'hero-cropped.jpg', { type: 'image/jpeg' }))
+    cropVisible.value = false
+    ElMessage.success('已裁剪，点「保存头图」提交')
+  } catch {
+    ElMessage.error('裁剪失败，换一张图片试试')
+  } finally {
+    cropRendering.value = false
+  }
+}
+
+function applyPendingHero(file: File) {
+  clearPendingHero()
+  pendingHeroFile.value = file
+  pendingHeroPreview.value = URL.createObjectURL(file)
 }
 
 async function uploadHero() {
@@ -191,7 +408,10 @@ async function clearHero() {
 }
 
 onMounted(loadSettings)
-onBeforeUnmount(clearPendingHero)
+onBeforeUnmount(() => {
+  clearPendingHero()
+  releaseCropUrl()
+})
 </script>
 
 <template>
@@ -305,17 +525,63 @@ onBeforeUnmount(clearPendingHero)
               >
                 保存头图
               </el-button>
+              <el-button v-if="sourceHeroFile" link @click="openHeroCrop(sourceHeroFile)">
+                重新裁剪
+              </el-button>
               <el-button v-if="pendingHeroFile" link @click="clearPendingHero">取消选择</el-button>
               <el-button v-else-if="settings.heroImage" link @click="clearHero">移除头图</el-button>
             </div>
 
-            <p v-if="pendingHeroFile" class="card-tip">
-              已选择「{{ pendingHeroFile.name }}」，点「保存头图」提交
-            </p>
+            <p v-if="pendingHeroFile" class="card-tip">已裁剪好 16:9 头图，点「保存头图」提交</p>
           </div>
         </div>
       </section>
     </template>
+
+    <!-- 选好原图先在这里框选成 16:9 的横图，再走上传流程 -->
+    <el-dialog
+      v-model="cropVisible"
+      title="裁剪头图"
+      width="400"
+      :close-on-click-modal="false"
+      @closed="releaseCropUrl"
+    >
+      <div
+        class="crop-stage"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="onPointerUp"
+        @pointercancel="onPointerUp"
+        @wheel.prevent="onWheelZoom"
+      >
+        <img
+          ref="cropImageRef"
+          class="crop-image"
+          :src="cropImageUrl"
+          :style="cropImageStyle"
+          alt="待裁剪的头图"
+          draggable="false"
+        />
+      </div>
+
+      <div class="crop-controls">
+        <p class="crop-hint">拖动图片调整位置，滑块或滚轮缩放，框内就是最终头图（16:9）</p>
+        <el-slider
+          :model-value="cropScale"
+          :min="1"
+          :max="CROP_MAX_SCALE"
+          :step="0.01"
+          :show-tooltip="false"
+          @input="handleZoom"
+        />
+      </div>
+
+      <template #footer>
+        <el-button :disabled="cropRendering" @click="resetCrop">重置</el-button>
+        <el-button :disabled="cropRendering" @click="cropVisible = false">取消</el-button>
+        <el-button type="primary" :loading="cropRendering" @click="confirmCrop">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -405,5 +671,56 @@ onBeforeUnmount(clearPendingHero)
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* ---------- 裁剪头图 ---------- */
+
+.crop-stage {
+  position: relative;
+  width: 320px;
+  height: 180px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--panel-alt-bg);
+  box-shadow:
+    0 0 0 1px rgba(138, 90, 59, 0.18) inset,
+    0 0 0 8px rgba(138, 90, 59, 0.06);
+  cursor: grab;
+  touch-action: none;
+}
+
+.crop-stage:active {
+  cursor: grabbing;
+}
+
+.crop-image {
+  position: absolute;
+  max-width: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.crop-controls {
+  margin-top: 18px;
+  padding: 0 6px;
+}
+
+.crop-hint {
+  margin: 0 0 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+:deep(.el-dialog) {
+  border-radius: 22px;
+  background: var(--panel-bg);
+}
+
+:deep(.el-dialog__title) {
+  color: var(--text-strong);
+  font-weight: 600;
 }
 </style>
