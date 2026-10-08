@@ -7,6 +7,7 @@ import {
   Document,
   EditPen,
   Folder,
+  List,
   Setting,
   TrendCharts,
   User
@@ -49,6 +50,10 @@ const navGroups: NavGroup[] = [
       { label: '分类管理', icon: Folder, to: '/admin/categories' },
       { label: '标签管理', icon: CollectionTag, to: '/admin/tags' }
     ]
+  },
+  {
+    title: '待办事项',
+    items: [{ label: '待办清单', icon: List, to: '/admin/todos' }]
   },
   {
     title: '个人管理',

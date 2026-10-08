@@ -37,7 +37,7 @@ ACove/
 │   ├── nginx.conf.template       # SPA 回退 + /api 反代（域名走 .env 的 SITE_DOMAIN）
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / About / Login
-│       ├── views/admin/          # 后台页面：文章、分类、标签、个人管理、网站设置、访问统计 + AdminLayout
+│       ├── views/admin/          # 后台页面：文章、分类、标签、待办清单、个人管理、网站设置、访问统计 + AdminLayout
 │       ├── components/DockNav.vue
 │       ├── router/index.ts
 │       └── utils/request.ts      # axios 实例（baseURL = /api）

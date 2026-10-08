@@ -46,6 +46,10 @@ onMounted(async () => {
   /* 访问统计里涨 / 跌的文字色，别在组件里写死颜色 */
   --trend-up: #4a7a52;
   --trend-down: #b4553c;
+  /* Todo 三个状态的点 / 标签色，前台卡片和后台列表共用 */
+  --status-doing: #8a5a3b;
+  --status-todo: #b98a5e;
+  --status-done: #4a7a52;
   /* 正文代码块：深棕底 + 暖色 token，规则在 styles/markdown.css */
   --code-bg: #3f2e22;
   --code-tabs-bg: #34251b;
