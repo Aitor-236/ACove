@@ -24,6 +24,7 @@ ACove/
 │       ├── java/.../auth/        # 登录 + 站点资料：AuthController / SysUser / SiteController（站长、站点设置）
 │       ├── java/.../article/     # 文章、分类、标签（含 admin 侧接口）
 │       ├── java/.../visit/       # 访问统计：页面浏览上报 + 后台 PV / UV 概览与趋势
+│       ├── java/.../todo/        # Todo 清单：前台只读列表 + 后台增删改 / 改状态 / 置顶
 │       ├── java/.../common/      # Result、BusinessException、JwtInterceptor、JwtUtil、PageParam
 │       ├── java/.../config/      # SecurityConfig、WebMvcConfig、MybatisPlusConfig、JwtProperties
 │       └── resources/
@@ -157,6 +158,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
 | GET | `/site/settings` | 前台站点设置：网站名、首页头图、首页中间的文字（匿名可访问） |
+| GET | `/todo/list` | Todo 清单（前台只读）：一次性返回全部，置顶那条最先，其余按创建时间新 → 旧 |
 | POST | `/visit/report` | 前台页面浏览上报，每次切换页面调一次；访客标识由服务端 Cookie（`blog_vid`）维护，前端不用传参 |
 | GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、首页头图 `/uploads/hero/`），由后端直接托管；`<img>` 请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
 
@@ -183,6 +185,13 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/upload/image` | 上传正文配图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif），返回 `url` 供编辑器写进 Markdown |
 | GET | `/admin/visit/overview` | 访问统计概览：今日 / 昨日的 PV、UV，以及绝对增量与增幅百分比（昨日为 0 时增幅返回 `null`） |
 | GET | `/admin/visit/trend` | 最近若干天的每日 PV / UV，`days` 默认 30、上限 90，按日期升序返回（没有数据的日子补 0） |
+| GET | `/admin/todo/list` | Todo 清单（后台），和前台同一份数据，带置顶标记 |
+| POST | `/admin/todo/create` | 新建 Todo：`title` 必填，`description` / `status` 可选（状态缺省 `todo`），新建的永远不是置顶 |
+| POST | `/admin/todo/update` | 局部更新（body 带 `id`），只改传入的字段；置顶不走这里 |
+| POST | `/admin/todo/delete` | 物理删除（query `id`），不存在返回 404 |
+| POST | `/admin/todo/status` | 改状态（query `id` + `status`）：`todo`-酝酿中 / `doing`-打磨中 / `done`-已完成 |
+| POST | `/admin/todo/pin` | 置顶（query `id`）：同一事务里先取消旧置顶，保证全表只有一条置顶 |
+| POST | `/admin/todo/unpin` | 取消置顶（query `id`） |
 
 写操作统一使用 POST（项目里没有使用 PUT / DELETE 动词）。
 
@@ -198,6 +207,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `visit_daily_stat` | 每日访问汇总：`stat_date`（主键）/ `pv` / `uv`，一天一行，后台统计页的数据来源 |
 | `visit_visitor` | 每日访客去重：`stat_date` + `visitor_key`（唯一键），访客当天第一次出现才让 UV 加一；`visitor_key` 是 Cookie 里 IP + User-Agent 的哈希，不存原始 IP |
 | `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `hero_text`（首页中间文字，空表示回退成网站名） |
+| `todo` | Todo 清单（站长个人一份）：`title` / `description`（可空）/ `status`(todo-酝酿中, doing-打磨中, done-已完成) / `is_pinned` / `created_at` / `updated_at`；辅助列 `pinned_flag` 是生成列，配合唯一索引 `uk_todo_pinned` 保证全表最多一条 `is_pinned = 1`（迁移脚本 `V2__create_todo.sql`） |
 
 外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`。
 
