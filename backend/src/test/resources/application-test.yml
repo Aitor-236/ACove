@@ -1,0 +1,25 @@
+# ============================================================
+# 测试专用配置（AcoveApplicationTests 上的 @ActiveProfiles("test") 激活）
+# 目的：跑 ./mvnw test 时不连本机 MySQL、也不依赖 gitignored 的 application-local.yml。
+#
+# 做法：
+#   - 关掉 Flyway：否则 Spring Boot 在启动上下文时就会连库跑迁移，测试必须能连上真实 MySQL。
+#   - 数据源指向一个不会真正被连接的地址：getConnection 之前 Hikari 不会建连接，
+#     而关掉 Flyway 后没有任何组件在建上下文时取连接。
+# ============================================================
+spring:
+    flyway:
+        enabled: false
+    datasource:
+        url: jdbc:mysql://127.0.0.1:3306/blog_db?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+        username: test
+        password: test
+        driver-class-name: com.mysql.cj.jdbc.Driver
+
+jwt:
+    secret-key: "test-only-secret-key-not-used-in-production"
+    expire-time: 86400000
+
+blog:
+    upload:
+        dir: ./build/test-uploads

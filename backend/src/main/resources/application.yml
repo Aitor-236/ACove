@@ -7,6 +7,19 @@ spring:
         multipart:
             max-file-size: 5MB
             max-request-size: 6MB
+    # 数据库 schema 的唯一来源：迁移文件在 classpath:db/migration（V1__baseline.sql 起）
+    # 空库直接按版本建表；已有表但没有 flyway_schema_history 的老库，
+    # 先写一条 version 0 的基线记录，再把 V1（全部是 IF NOT EXISTS 空操作）执行一遍，之后继续 V2+。
+    # 别再手工改库：改表结构一律新增 Vn__xxx.sql。
+    flyway:
+        enabled: true
+        locations: classpath:db/migration
+        baseline-on-migrate: true
+        baseline-version: 0
+        encoding: UTF-8
+        # 禁止 clean，避免误删整库；校验和必须对得上，已应用的迁移文件不能再改
+        clean-disabled: true
+        validate-on-migrate: true
 
 server:
     port: 8080

@@ -27,9 +27,10 @@ ACove/
 │       ├── java/.../common/      # Result、BusinessException、JwtInterceptor、JwtUtil、PageParam
 │       ├── java/.../config/      # SecurityConfig、WebMvcConfig、MybatisPlusConfig、JwtProperties
 │       └── resources/
-│           ├── application.yml            # 公共配置（端口、上传上限）
+│           ├── application.yml            # 公共配置（端口、上传上限、Flyway）
 │           ├── application-docker.yml     # 容器部署：配置全部读环境变量
-│           └── application-local.yml      # 本地开发配置（gitignore，不进仓库/镜像）
+│           ├── application-local.yml      # 本地开发配置（gitignore，不进仓库/镜像）
+│           └── db/migration/              # Flyway 迁移脚本（V1__baseline.sql 起，建表的唯一来源）
 ├── frontend/                     # Vue 3 前端
 │   ├── Dockerfile                # 多阶段构建：Node 构建 → Nginx 托管
 │   ├── nginx.conf.template       # SPA 回退 + /api 反代（域名走 .env 的 SITE_DOMAIN）
@@ -39,13 +40,9 @@ ACove/
 │       ├── components/DockNav.vue
 │       ├── router/index.ts
 │       └── utils/request.ts      # axios 实例（baseURL = /api）
-├── sql/                          # 建库与账号脚本
-│   ├── init_database.sql         # 全新部署：建库 + 建表（不含任何用户）
-│   ├── article_schema.sql        # 已有数据库的增量升级脚本
-│   ├── user_schema.sql           # 用户表增量升级（avatar / role 两列）
-│   ├── visit_schema.sql          # 访问统计增量升级（每日 PV / UV 两张表）
-│   ├── site_schema.sql           # 站点设置增量升级（网站名 / 首页头图 / 首页文字单行表）
-│   └── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
+├── sql/                          # 账号脚本 + 历史存档（表结构已交给 Flyway）
+│   ├── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
+│   └── legacy/                   # Flyway 之前的建库 / 增量脚本，只读存档，不再被执行
 ├── docker-compose.yml            # 服务器部署编排：MySQL + 后端 + 前端
 ├── deploy.sh                     # 一键部署 / 运维脚本（init / up / account / backup …）
 └── .env.example                  # 部署配置模板（复制成 .env 后使用，.env 不入库）
@@ -69,37 +66,15 @@ ACove/
 
 ### 1. 初始化数据库
 
-全新部署（创建 `blog_db` 和全部表：`sys_user`、文章模块、访问统计、站点设置，脚本可重复执行）：
+表结构由后端启动时的 **Flyway** 自动创建，迁移脚本在 `backend/src/main/resources/db/migration/`，当前基线是 `V1__baseline.sql`。`sql/legacy/` 里是 Flyway 之前的建库 / 增量脚本，只作历史存档，`docker-compose.yml` 与 `deploy.sh` 都不会再执行它们。
 
-```bash
-mysql -uroot -p < sql/init_database.sql
-```
+- **全新部署（Docker）**：执行 `./deploy.sh up`。MySQL 只负责建出 `blog_db` 空库，后端启动时 Flyway 建出全部表（`sys_user`、文章模块、访问统计、站点设置）。
+- **本地开发**：按下面的「启动后端」配好 `application-local.yml`，然后 `./mvnw spring-boot:run`，启动过程中 Flyway 会把表建好。
+- **老库升级**：先 `./deploy.sh backup`，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
+- **查看状态**：`./deploy.sh info` 打印已应用 / 未应用的迁移版本。
+- **改表结构**：新增 `V2__xxx.sql` 这样的迁移脚本，不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
 
-如果数据库已存在、只想补文章模块的表：
-
-```bash
-mysql -uroot -p < sql/article_schema.sql
-```
-
-只补用户表新增的列（`avatar` / `role`）：
-
-```bash
-mysql -uroot -p < sql/user_schema.sql
-```
-
-只补访问统计模块（每日 PV / UV）的表：
-
-```bash
-mysql -uroot -p < sql/visit_schema.sql
-```
-
-只补站点设置模块（网站名 / 首页头图 / 首页文字）的表：
-
-```bash
-mysql -uroot -p < sql/site_schema.sql
-```
-
-这些脚本都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
+以上流程都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
 
 ### 2. 创建登录账号
 
@@ -216,7 +191,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | 表 | 说明 |
 | --- | --- |
 | `sys_user` | 登录用户：`id` / `username`（唯一）/ `email` / `password`（BCrypt）/ `avatar`（头像地址，默认空）/ `role`（owner-站长、admin-管理员、user-普通用户）/ `create_time` |
-| `article_category` | 文章分类：`name` / `slug`（唯一）/ `sort_order`，脚本预置前端、后端、绘画、生活四条 |
+| `article_category` | 文章分类：`name` / `slug`（唯一）/ `sort_order`，迁移脚本 `V1__baseline.sql` 预置前端、后端、绘画、生活四条 |
 | `tag` | 标签：`name`（唯一） |
 | `article` | 文章主表：`title` / `summary` / `content_markdown` / `status`(draft, published) / `published_at` / `reading_minutes` |
 | `article_tag` | 文章与标签的关联表，复合主键，级联删除 |
@@ -245,6 +220,8 @@ npm run format              # Prettier 格式化
 # Docker（在仓库根目录）
 ./deploy.sh init            # 生成 .env（随机 MySQL 密码 + JWT 密钥）
 ./deploy.sh up              # 构建镜像并启动 MySQL / 后端 / 前端
+./deploy.sh migrate         # 重建后端触发 Flyway 迁移，并打印迁移记录
+./deploy.sh info            # 查看已应用 / 未应用的迁移版本
 ./deploy.sh account         # 创建 / 重置后台登录账号
 ./deploy.sh status          # 容器状态 + 访问地址
 ./deploy.sh logs backend    # 跟日志（默认全部服务）
@@ -296,7 +273,7 @@ SITE_DOMAIN=acove.top    # 站点主域名：nginx 的 server_name / HTTPS 跳�
 ./deploy.sh up          # 等价于 docker compose up -d --build
 ```
 
-首次启动时 MySQL 会自动执行 `sql/init_database.sql` 建库建表（只在数据卷为空时执行一次，不预置账号），后端会等 MySQL 健康检查通过再启动。起来之后：
+首次启动时 MySQL 建出 `.env` 里 `BLOG_DB_NAME` 指定的空库，随后后端启动、由 Flyway 应用 `db/migration` 里的迁移把表建出来（不预置账号）。想看迁移状态用 `./deploy.sh info`，想手动触发一次用 `./deploy.sh migrate`。起来之后：
 
 - 前台：`http://<服务器IP>/`（改了端口就是 `http://<服务器IP>:8081/`）
 - 后台：`http://<服务器IP>/login`
@@ -386,10 +363,18 @@ sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
 | `bind: address already in use` | 80 端口被别的服务占用，改 `.env` 里的 `BLOG_HTTP_PORT` 后 `./deploy.sh up` |
 | 页面能开，接口 502 | 后端还没起来或启动失败：`./deploy.sh logs backend`（常见是 `.env` 里密码/密钥没配） |
 | 登录报"用户名或密码错误" | 还没建账号，先跑 `./deploy.sh account` |
-| 老库升级后缺新增的列 | `./deploy.sh init-db sql/user_schema.sql`（脚本幂等，可重复执行） |
-| 分类名 / 标签名显示成 `å‰ç«¯` 这类乱码 | 客户端字符集不是 utf8mb4：确认 `docker/mysql-client.cnf` 已按 compose 挂进 `/etc/mysql/conf.d/`，然后 `./deploy.sh down -v` + `./deploy.sh up` 重新初始化（已有数据要用 `SET NAMES utf8mb4` 的导出重灌） |
+| 老库升级后缺表 / 缺列 | 表结构归 Flyway 管：`./deploy.sh migrate` 会把迁移脚本里的内容补齐；要加东西就新增 `backend/src/main/resources/db/migration/Vn__xxx.sql`，别手改库 |
+| 后端容器反复重启、迁移失败 | `./deploy.sh logs backend` 看 Flyway 报错，修好迁移脚本后重跑 `./deploy.sh migrate`；若 `flyway_schema_history` 里留下 `success = 0` 的记录，先按下面「清掉失败的迁移记录」删掉再重跑 |
+| 启动报 `Migration checksum mismatch` | 已经应用过的迁移文件被改过：把文件恢复原样，或新增一个迁移脚本去写这次想做的变更。`clean` 已在 `application.yml` 里禁用，不要清库重来 |
+| 分类名 / 标签名显示成 `å‰ç«¯` 这类乱码 | 建表已由 JDBC（`characterEncoding=utf-8`）负责，出乱码的通常是 `./deploy.sh account` 或手工导入 SQL：确认 `docker/mysql-client.cnf` 已按 compose 挂进 `/etc/mysql/conf.d/`，已有乱码数据要用 `SET NAMES utf8mb4` 的导出重灌 |
 | 构建时卡在 `docker.io/docker/dockerfile` 超时 | 国内网络拉不到 Docker Hub 的 frontend 镜像：本项目已刻意不写 `# syntax=` 指令；若你自己新写的 Dockerfile 加了，删掉或给守护进程配镜像加速 / 代理 |
-| CentOS / RHEL 上挂载 SQL 失败 | SELinux 限制：给 `docker-compose.yml` 里 `./sql/init_database.sql` 的挂载加上 `:ro,Z` |
+
+清掉失败的迁移记录（只在 `./deploy.sh info` 里看到某条 `success = 0` 时用；库名不是 `blog_db` 就换成你自己的）：
+
+```bash
+docker compose exec -T mysql sh -c \
+  'exec mysql --default-character-set=utf8mb4 --user=root --password="$MYSQL_ROOT_PASSWORD" --database=blog_db -e "DELETE FROM flyway_schema_history WHERE success = 0;"'
+```
 
 ### 不用 Docker 的手动部署
 
@@ -405,5 +390,6 @@ sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
 - `sys_user.role` 目前只用来决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。权限还没做，后台接口仍然只校验"是否登录"，任何登录用户都能进后台。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
 - 头像、正文配图和首页头图都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/` 与 `backend/uploads/hero/`，已加入 `.gitignore`），数据库只存 `/uploads/xxx/yyy.png` 这样的相对地址：头像和头图由前端加 `/api` 前缀访问，正文里的图片由 `frontend/src/utils/markdown.ts` 在渲染时补上 `/api` 前缀（正文里手写 `/uploads/...` 也能正常显示）；部署时该目录要可写并且要持久化，否则图片会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
-- `sql/init_database.sql` 与 `sql/article_schema.sql` 有一部分重复的建表语句（前者面向全新部署，后者面向文章模块的增量升级），修改表结构时两个文件都要同步；增量升级脚本按模块分文件：用户 `sql/user_schema.sql`、访问统计 `sql/visit_schema.sql`、站点设置 `sql/site_schema.sql`。
-- 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；表结构变更时 `sql/init_database.sql` 与 `sql/site_schema.sql` 要同步。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），以后改表结构只需新增 `V2__xxx.sql`、`V3__xxx.sql`。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
+- 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。

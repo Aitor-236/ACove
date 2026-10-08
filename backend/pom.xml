@@ -64,6 +64,16 @@
 			<artifactId>mysql-connector-j</artifactId>
 			<scope>runtime</scope>
 		</dependency>
+		<!--Flyway：数据库 schema 的唯一来源，迁移文件在 resources/db/migration-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-flyway</artifactId>
+		</dependency>
+		<!--Flyway 10+ 起 MySQL 支持拆成独立模块，版本由 spring-boot-starter-parent 统一管理-->
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-mysql</artifactId>
+		</dependency>
 		<!--security-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
