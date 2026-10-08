@@ -323,8 +323,9 @@ cmd_info() {
     print_flyway_history
 
     local applied pending=0 file base version
+    # 注意只删每行里的空格和回车，不能连换行一起删：版本 0 和 1 会粘成 "01"，导致漏判
     applied="$(mysql_exec "$(db_name)" \
-        "SELECT version FROM ${FLYWAY_TABLE} WHERE success = 1;" 2>/dev/null | tail -n +2 | tr -d '[:space:]')" || true
+        "SELECT version FROM ${FLYWAY_TABLE} WHERE success = 1;" 2>/dev/null | tail -n +2 | tr -d ' \r')" || true
 
     for file in "$MIGRATION_DIR"/V*.sql; do
         [ -f "$file" ] || continue
