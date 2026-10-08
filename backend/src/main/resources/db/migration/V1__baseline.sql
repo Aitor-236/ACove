@@ -95,16 +95,19 @@ CREATE TABLE IF NOT EXISTS article_tag (
         ON UPDATE CASCADE
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci COMMENT = '文章与标签关联表';
 
--- 预置与现有文章页面一致的分类数据（基于 slug 幂等）。
--- 注意 ON DUPLICATE KEY UPDATE 只写 id = id：老库重新执行本文件时保持分类名 / 排序不动，
--- 后台在「分类管理」里改过的名字不能被种子数据覆盖。
+-- 预置初始分类：**只在分类表为空时**（也就是全新部署）插入。
+-- 老库往往已经改过分类名和 slug（例如把前端/后端换成自己的分类），
+-- 按 slug 幂等会因为这些 slug 不匹配而多插 4 条，所以这里用「空表才播种」的写法。
+SET @category_count := (SELECT COUNT(*) FROM article_category);
+
 INSERT INTO article_category (name, slug, sort_order)
-VALUES
-    ('前端', 'frontend', 10),
-    ('后端', 'backend', 20),
-    ('绘画', 'painting', 30),
-    ('生活', 'life', 40)
-ON DUPLICATE KEY UPDATE id = id;
+SELECT * FROM (
+    SELECT '前端' AS name, 'frontend' AS slug, 10 AS sort_order
+    UNION ALL SELECT '后端', 'backend', 20
+    UNION ALL SELECT '绘画', 'painting', 30
+    UNION ALL SELECT '生活', 'life', 40
+) AS seed
+WHERE @category_count = 0;
 
 -- ------------------------------------------------------------
 -- 访问统计模块（每天一行汇总 + 当天访客去重，UV 去重不依赖 Redis）
