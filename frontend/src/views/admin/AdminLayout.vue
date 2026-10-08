@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, type Component } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, type Component } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
+  ArrowDown,
   CollectionTag,
   Document,
   EditPen,
@@ -66,17 +67,15 @@ const navGroups: NavGroup[] = [
   {
     title: '站点数据',
     items: [{ label: '访问统计', icon: TrendCharts, to: '/admin/visits' }]
-  },
-  {
-    title: '预留功能',
-    items: [
-      { label: '用户管理', icon: User, disabled: true }
-    ]
   }
 ]
 
 const route = useRoute()
 const router = useRouter()
+
+/** 窄屏下左侧导航收成一个下拉：用一个按钮展开 / 收起 */
+const mobileNavOpen = ref(false)
+const sidebarRef = ref<HTMLElement | null>(null)
 
 /** 先用 localStorage 里的值渲染，进页面后再用接口返回的资料刷新 */
 const username = ref(localStorage.getItem('username') || '管理员')
@@ -121,11 +120,13 @@ onMounted(() => {
   // 个人管理 / 网站设置保存成功后广播，侧栏跟着换名字、头像和网站名
   window.addEventListener('profile-updated', loadAccount)
   window.addEventListener('site-settings-updated', loadSiteName)
+  document.addEventListener('click', handleDocumentClick)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('profile-updated', loadAccount)
   window.removeEventListener('site-settings-updated', loadSiteName)
+  document.removeEventListener('click', handleDocumentClick)
 })
 
 function isActive(item: NavItem) {
@@ -139,6 +140,36 @@ function isActive(item: NavItem) {
   }
   return route.path === item.to
 }
+
+/** 窄屏下拉按钮上显示的「当前页面」，找不到匹配项就退回兜底文案 */
+const currentNav = computed(() => {
+  for (const group of navGroups) {
+    const active = group.items.find((item) => isActive(item))
+    if (active) return active
+  }
+  return undefined
+})
+const currentNavLabel = computed(() => currentNav.value?.label ?? '后台导航')
+const currentNavIcon = computed(() => currentNav.value?.icon ?? List)
+
+function toggleMobileNav() {
+  mobileNavOpen.value = !mobileNavOpen.value
+}
+
+function closeMobileNav() {
+  mobileNavOpen.value = false
+}
+
+/** 下拉展开后，点到侧栏以外的位置就收起 */
+function handleDocumentClick(event: MouseEvent) {
+  if (!mobileNavOpen.value) return
+  if (sidebarRef.value && !sidebarRef.value.contains(event.target as Node)) {
+    closeMobileNav()
+  }
+}
+
+// 跳转后自动把下拉收起（点当前页链接不换路由，靠链接自己的 click 关）
+watch(() => route.path, closeMobileNav)
 
 async function handleLogout() {
   try {
@@ -162,57 +193,77 @@ async function handleLogout() {
 
 <template>
   <div class="admin-shell">
-    <aside class="admin-sidebar">
-      <div class="brand">
-        <div class="brand-logo">{{ brandInitial }}</div>
-        <div class="brand-text">
-          <strong>{{ siteName }}</strong>
-          <span>管理后台</span>
+    <aside ref="sidebarRef" class="admin-sidebar">
+      <div class="sidebar-head">
+        <div class="brand">
+          <div class="brand-logo">{{ brandInitial }}</div>
+          <div class="brand-text">
+            <strong>{{ siteName }}</strong>
+            <span>管理后台</span>
+          </div>
         </div>
+
+        <button
+          type="button"
+          class="nav-toggle"
+          :class="{ 'is-open': mobileNavOpen }"
+          :aria-expanded="mobileNavOpen"
+          aria-controls="admin-nav-panel"
+          @click="toggleMobileNav"
+        >
+          <span class="nav-toggle-label">
+            <el-icon><component :is="currentNavIcon" /></el-icon>
+            {{ currentNavLabel }}
+          </span>
+          <el-icon class="nav-toggle-caret"><ArrowDown /></el-icon>
+        </button>
       </div>
 
-      <nav class="admin-nav" aria-label="后台导航">
-        <div v-for="group in navGroups" :key="group.title" class="nav-group">
-          <p class="nav-group-title">{{ group.title }}</p>
+      <div id="admin-nav-panel" class="nav-panel" :class="{ 'is-open': mobileNavOpen }">
+        <nav class="admin-nav" aria-label="后台导航">
+          <div v-for="group in navGroups" :key="group.title" class="nav-group">
+            <p class="nav-group-title">{{ group.title }}</p>
 
-          <template v-for="item in group.items" :key="item.label">
-            <router-link
-              v-if="item.to && !item.disabled"
-              :to="item.to"
-              class="nav-item"
-              :class="{ 'is-active': isActive(item) }"
-            >
-              <span class="nav-icon" aria-hidden="true">
-                <el-icon><component :is="item.icon" /></el-icon>
-              </span>
-              <span class="nav-label">{{ item.label }}</span>
-            </router-link>
+            <template v-for="item in group.items" :key="item.label">
+              <router-link
+                v-if="item.to && !item.disabled"
+                :to="item.to"
+                class="nav-item"
+                :class="{ 'is-active': isActive(item) }"
+                @click="closeMobileNav"
+              >
+                <span class="nav-icon" aria-hidden="true">
+                  <el-icon><component :is="item.icon" /></el-icon>
+                </span>
+                <span class="nav-label">{{ item.label }}</span>
+              </router-link>
 
-            <span v-else class="nav-item is-disabled" aria-disabled="true">
-              <span class="nav-icon" aria-hidden="true">
-                <el-icon><component :is="item.icon" /></el-icon>
+              <span v-else class="nav-item is-disabled" aria-disabled="true">
+                <span class="nav-icon" aria-hidden="true">
+                  <el-icon><component :is="item.icon" /></el-icon>
+                </span>
+                <span class="nav-label">{{ item.label }}</span>
+                <span class="nav-badge">开发中</span>
               </span>
-              <span class="nav-label">{{ item.label }}</span>
-              <span class="nav-badge">开发中</span>
+            </template>
+          </div>
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="account">
+            <span class="account-avatar">
+              <img v-if="avatarUrl" :src="avatarUrl" alt="头像" />
+              <template v-else>{{ avatarText }}</template>
             </span>
-          </template>
-        </div>
-      </nav>
+            <span class="account-name">{{ username }}</span>
+          </div>
 
-      <div class="sidebar-footer">
-        <div class="account">
-          <span class="account-avatar">
-            <img v-if="avatarUrl" :src="avatarUrl" alt="头像" />
-            <template v-else>{{ avatarText }}</template>
-          </span>
-          <span class="account-name">{{ username }}</span>
-        </div>
-
-        <div class="footer-actions">
-          <router-link to="/" class="footer-link">返回前台</router-link>
-          <button type="button" class="footer-link is-danger" @click="handleLogout">
-            退出登录
-          </button>
+          <div class="footer-actions">
+            <router-link to="/" class="footer-link" @click="closeMobileNav">返回前台</router-link>
+            <button type="button" class="footer-link is-danger" @click="handleLogout">
+              退出登录
+            </button>
+          </div>
         </div>
       </div>
     </aside>
@@ -263,6 +314,8 @@ async function handleLogout() {
 
 .brand {
   display: flex;
+  flex: 1;
+  min-width: 0;
   align-items: center;
   gap: 12px;
   padding: 0 6px 20px;
@@ -286,18 +339,42 @@ async function handleLogout() {
 .brand-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   line-height: 1.35;
 }
 
 .brand-text strong {
+  overflow: hidden;
   color: var(--text-strong);
   font-size: 15px;
   font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .brand-text span {
   color: var(--text-muted);
   font-size: 12px;
+}
+
+/* 侧栏顶部一行：宽屏只放品牌，窄屏右侧多一个下拉触发器 */
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 窄屏下拉触发器：宽屏直接显示完整侧栏导航，所以隐藏 */
+.nav-toggle {
+  display: none;
+}
+
+/* 导航 + 页脚容器；宽屏撑满余下高度，窄屏变下拉面板 */
+.nav-panel {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .admin-nav {
@@ -455,28 +532,106 @@ async function handleLogout() {
     padding: 14px;
   }
 
+  /* 窄屏：侧栏收成顶部一条，导航藏进下拉，不再横向铺一大片 */
   .admin-sidebar {
-    position: static;
+    position: relative;
+    top: auto;
     flex: none;
     width: 100%;
     height: auto;
+    padding: 14px 16px;
+  }
+
+  .brand {
+    padding: 0;
+    border-bottom: none;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    border: 1px solid var(--panel-border);
+    border-radius: 14px;
+    color: var(--text-strong);
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--panel-alt-bg);
+    cursor: pointer;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .nav-toggle:hover,
+  .nav-toggle.is-open {
+    color: var(--accent-brown);
+    background: #fbf6ec;
+  }
+
+  .nav-toggle-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+
+  .nav-toggle-caret {
+    transition: transform 0.2s ease;
+  }
+
+  .nav-toggle.is-open .nav-toggle-caret {
+    transform: rotate(180deg);
+  }
+
+  /* 下拉面板：浮在侧栏下方，展开时才显示 */
+  .nav-panel {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    left: 0;
+    z-index: 30;
+    max-height: min(70vh, 520px);
+    overflow-y: auto;
+    padding: 18px 16px 16px;
+    border: 1px solid var(--panel-border);
+    border-radius: 22px;
+    background: var(--panel-bg);
+    box-shadow: var(--panel-shadow);
+  }
+
+  .nav-panel.is-open {
+    display: flex;
   }
 
   .admin-nav {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 14px;
-    padding: 16px 0;
+    flex: none;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    gap: 18px;
+    padding: 0;
+    overflow: visible;
+  }
+
+  /* 账号 / 返回前台 / 退出登录贴在面板底部，不用滚到底才能点 */
+  .sidebar-footer {
+    position: sticky;
+    bottom: 0;
+    margin-top: 14px;
+    background: var(--panel-bg);
   }
 
   .nav-group {
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
   }
 
   .nav-group-title {
-    width: 100%;
+    width: auto;
   }
 }
 </style>
