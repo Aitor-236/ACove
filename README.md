@@ -22,7 +22,7 @@ ACove/
 │   ├── Dockerfile                # 多阶段构建：Maven 编译 → JRE 21 运行（非 root）
 │   └── src/main/                 # java/com/acove/blog + resources
 │       ├── java/.../auth/        # 登录 + 站点资料：AuthController / SysUser / SiteController（站长、站点设置）
-│       ├── java/.../article/     # 文章、分类、标签（含 admin 侧接口）
+│       ├── java/.../article/     # 文章、分类、标签、首页展示（含 admin 侧接口，表 home_article）
 │       ├── java/.../visit/       # 访问统计：页面浏览上报 + 后台 PV / UV 概览与趋势
 │       ├── java/.../todo/        # Todo 清单：前台只读列表 + 后台增删改 / 改状态 / 置顶
 │       ├── java/.../project/     # 开源项目：前台只读列表 + 后台增删改（表 open_source_project）
@@ -154,6 +154,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | --- | --- | --- |
 | POST | `/auth/login` | 登录，body 传 `username` 或 `email` + `password`，返回 token |
 | GET | `/article/list` | 已发布文章列表，支持 `page` / `size` / `category`（分类 slug）/ `tag`（标签名）/ `keyword`；卡片带 `tags` |
+| GET | `/article/home` | 前台首页动态列表：后台「首页展示」挑好的已发布文章按顺序返回（没挑时回退最近三篇），同时返回已发布文章总数 `total` |
 | GET | `/article/detail/{id}` | 文章详情，含 Markdown 正文和标签 |
 | GET | `/category/list` | 分类列表，`articleCount` 只统计已发布文章 |
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
@@ -176,6 +177,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/article/publish` | 发布文章 |
 | POST | `/admin/article/unpublish` | 撤回为草稿 |
 | POST | `/admin/article/force-delete` | 物理删除，仅允许删除草稿 |
+| GET | `/admin/home-article/list` | 首页展示的已选文章，数组顺序就是首页顺序；含当前是草稿的（带 `status`，草稿不会显示在首页） |
+| POST | `/admin/home-article/save` | 整体覆盖首页展示选择，body 传 `articleIds` 数组（顺序即首页顺序），空数组表示清空 |
 | GET / POST | `/admin/category/list`、`/create`、`/update`、`/delete` | 分类管理 |
 | GET / POST | `/admin/tag/list`、`/create`、`/update`、`/delete` | 标签管理 |
 | GET | `/admin/user/profile` | 个人管理：当前登录用户的用户名 / 邮箱 / 头像 |
@@ -215,6 +218,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `hero_text`（首页中间文字，空表示回退成网站名） |
 | `todo` | Todo 清单（站长个人一份）：`title` / `description`（可空）/ `status`(todo-酝酿中, doing-打磨中, done-已完成) / `is_pinned` / `created_at` / `updated_at`；辅助列 `pinned_flag` 是生成列，配合唯一索引 `uk_todo_pinned` 保证全表最多一条 `is_pinned = 1`（迁移脚本 `V2__create_todo.sql`） |
 | `open_source_project` | 开源项目：`name` / `url`（项目地址）/ `description`（介绍）/ `update_log`（日志·最新更新内容）/ `next_step`（下一步·todo）/ `preview_image`（预览图相对地址，**暂未启用**，默认空串、前台不展示）/ `created_at` / `updated_at`（迁移脚本 `V3__create_open_source_project.sql`） |
+| `home_article` | 首页展示文章：`article_id`（主键，关联 `article.id`，级联删除）/ `sort_order`（越小越靠前）/ `created_at`；后台「首页展示」页维护，前台 `GET /article/home` 按它排序（迁移脚本 `V4__create_home_article.sql`） |
 
 外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`。
 
@@ -404,11 +408,12 @@ docker compose exec -T mysql sh -c \
 ## 说明与待办
 
 - 画廊页（`/gallery`）和个人简介页（`/about`）目前是页面内静态数据，等后端接口就绪后再替换。开源项目页（`/projects`）已由后端驱动：数据来自 `open_source_project` 表，后台「开源项目 → 项目列表」维护，每个项目一张卡片。
+- 首页动态列表由后台「内容管理 → 首页展示」维护（表 `home_article`）：挑中的已发布文章按拖拽顺序展示，数量不限；一篇都没挑时回退到最近三篇已发布文章。选择里会保留被取消发布的文章（前台自动隐藏），重新发布后回到原来的位置。
 - 开源项目的预览图（`preview_image` 列）**暂时留空、不启用**：表里先建好列，前台和后台都还没给它留位置，等后期做预览图上传时再补 UI。
 - `sys_user.role` 目前只用来决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。权限还没做，后台接口仍然只校验"是否登录"，任何登录用户都能进后台。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
 - 头像、正文配图和首页头图都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/` 与 `backend/uploads/hero/`，已加入 `.gitignore`），数据库只存 `/uploads/xxx/yyy.png` 这样的相对地址：头像和头图由前端加 `/api` 前缀访问，正文里的图片由 `frontend/src/utils/markdown.ts` 在渲染时补上 `/api` 前缀（正文里手写 `/uploads/...` 也能正常显示）；部署时该目录要可写并且要持久化，否则图片会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
-- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表，以后改表结构只需新增下一个 `Vn__xxx.sql`。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表，以后改表结构只需新增下一个 `Vn__xxx.sql`。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
 - 后台「文章管理 → 编辑文章」的正文编辑器是 Typodown（`@vemonet/typodown`，CodeMirror 6 实时预览：光标所在结构显示原始标记、移开即渲染），包在 `frontend/src/components/MarkdownEditor.vue` 里，主题写在 `frontend/src/styles/typodown.css`；它只有 0.0.x、单人维护、也没有给外部加扩展的入口，`::: code-group` 在编辑器里只能按源码文本显示。**待办**：以后自己用 CodeMirror 6 写一套替换它（含把 `::: code-group` 在编辑器里也渲染成标签页），新项目占位在 `~/Desktop/AEditor`（技术栈待定）。

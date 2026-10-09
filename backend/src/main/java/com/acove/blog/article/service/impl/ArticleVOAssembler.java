@@ -20,8 +20,8 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 把文章实体的分页结果统一组装成 ArticleVO 分页结果：补上分类名称、
- * 标签名，只暴露前端需要的字段。公开列表和后台列表共用，保证两边返回结构一致。
+ * 把文章实体统一组装成 ArticleVO：补上分类名称、标签名，只暴露前端需要的字段。
+ * 公开列表、后台列表和首页展示共用，保证几边返回结构一致。
  */
 @Component
 @RequiredArgsConstructor
@@ -31,21 +31,32 @@ public class ArticleVOAssembler {
     private final ArticleTagMapper articleTagMapper;
 
     Page<ArticleVO> toVoPage(Page<Article> articlePage) {
-        Map<Long, String> categoryNames = loadCategoryNames(articlePage.getRecords());
-        Map<Long, List<String>> tagNames = loadTagNames(articlePage.getRecords());
-
         Page<ArticleVO> voPage = new Page<>(
                 articlePage.getCurrent(),
                 articlePage.getSize(),
                 articlePage.getTotal());
-        voPage.setRecords(articlePage.getRecords().stream()
+        voPage.setRecords(toVoList(articlePage.getRecords()));
+        return voPage;
+    }
+
+    /**
+     * 把一组文章实体转换成展示对象：一次补齐分类名和标签名，顺序保持不变。
+     * 首页展示（有序列表）和列表分页共用同一套字段拼装。
+     */
+    List<ArticleVO> toVoList(List<Article> articles) {
+        if (articles == null || articles.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, String> categoryNames = loadCategoryNames(articles);
+        Map<Long, List<String>> tagNames = loadTagNames(articles);
+        return articles.stream()
                 .map(article -> {
                     ArticleVO vo = ArticleVO.from(article, categoryNames.get(article.getCategoryId()));
                     vo.setTags(tagNames.getOrDefault(article.getId(), List.of()));
                     return vo;
                 })
-                .collect(Collectors.toList()));
-        return voPage;
+                .collect(Collectors.toList());
     }
 
     Page<ArticleVO> emptyPage(long page, long size) {

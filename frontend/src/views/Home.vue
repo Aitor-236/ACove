@@ -127,13 +127,12 @@ const heroBackground = computed(() => {
 /** 整屏滚动容器，用来保存 / 恢复滚动位置 */
 const pageRef = ref<HTMLElement | null>(null)
 
-async function loadLatestArticles() {
+/** 首页动态：后端「首页展示」挑好的文章（没挑就回退最近三篇），total 是已发布文章总数 */
+async function loadHomeArticles() {
   articlesLoading.value = true
   articlesError.value = ''
   try {
-    const res = (await request.get('/article/list', {
-      params: { page: 1, size: 3 }
-    })) as {
+    const res = (await request.get('/article/home')) as {
       data: { records: ArticleItem[]; total: number }
     }
     latestArticles.value = res.data.records
@@ -185,7 +184,7 @@ async function loadTodos() {
 }
 
 onMounted(async () => {
-  await Promise.all([loadLatestArticles(), loadSiteOwner(), loadSiteSettings(), loadTodos()])
+  await Promise.all([loadHomeArticles(), loadSiteOwner(), loadSiteSettings(), loadTodos()])
   // 文章渲染完成后恢复滚动位置；内容高度可能还要再稳定一两帧，
  await nextTick()
   // 所以设置后校验一次，没到位就再等一帧重试，避免被截断到较小的值

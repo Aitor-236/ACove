@@ -26,6 +26,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         .excludePathPatterns(
                 "/auth/login",                 // login endpoint
                 "/article/list",               // public article cards
+                "/article/home",               // 前台首页动态列表（后台挑选 + 顺序）
                 "/article/detail/**",          // public article detail
                 "/category/list",              // public category list
                 "/tag/list",                   // public tag list（前台标签面板）

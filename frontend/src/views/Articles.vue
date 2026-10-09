@@ -88,6 +88,34 @@ const categoryOptions = computed(() => [
   }))
 ])
 
+/** 窄屏分类下拉框的选项：第一条是"全部"，后面各分类带上文章数 */
+const categorySelectOptions = computed(() =>
+  categoryOptions.value.map((option) => ({
+    value: option.slug,
+    label: `${option.name}（${option.count}）`
+  }))
+)
+
+/** 窄屏标签下拉框的选项：第一条"全部标签"（空串 = 不按标签筛选） */
+const tagSelectOptions = computed(() => [
+  { value: '', label: '全部标签' },
+  ...tags.value.map((tag) => ({ value: tag.name, label: `${tag.name}（${tag.articleCount}）` }))
+])
+
+/**
+ * 窄屏下拉框的绑定：读的是现有筛选状态，写的还是原有那几个函数，
+ * 所以点卡片分类/标签、地址栏带参、清除筛选都能和下拉框保持同步。
+ */
+const categorySelectValue = computed({
+  get: () => activeCategorySlug.value,
+  set: (value: string | null | undefined) => selectCategory(value ?? '')
+})
+
+const tagSelectValue = computed({
+  get: () => activeTagName.value,
+  set: (value: string | null | undefined) => applyTagFilter(value ?? '')
+})
+
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / PAGE_SIZE)))
 
 async function loadCategories() {
@@ -166,6 +194,15 @@ function selectCategory(slug: string) {
 /** 再点一次已选中的标签表示取消筛选。 */
 function selectTagName(name: string) {
   activeTagName.value = activeTagName.value === name ? '' : name
+  page.value = 1
+  syncQuery()
+  void loadArticles()
+}
+
+/** 下拉框选标签：直接切到该标签，选「全部标签」才清掉 */
+function applyTagFilter(name: string) {
+  if (activeTagName.value === name) return
+  activeTagName.value = name
   page.value = 1
   syncQuery()
   void loadArticles()
@@ -261,6 +298,39 @@ onBeforeRouteLeave(() => {
             >
               清除
             </button>
+          </div>
+
+          <!-- 窄屏（≤860px）筛选：右侧分类/标签栏换成这里并排的两个下拉框 -->
+          <div class="filter-bar">
+            <el-select
+              v-model="categorySelectValue"
+              class="filter-select"
+              size="large"
+              placeholder="全部分类"
+              popper-class="front-select-popper"
+            >
+              <el-option
+                v-for="option in categorySelectOptions"
+                :key="option.value || 'all'"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+
+            <el-select
+              v-model="tagSelectValue"
+              class="filter-select"
+              size="large"
+              placeholder="全部标签"
+              popper-class="front-select-popper"
+            >
+              <el-option
+                v-for="option in tagSelectOptions"
+                :key="option.value || 'all'"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
           </div>
 
           <div v-if="appliedKeyword || activeTagName" class="filter-hint">
@@ -484,6 +554,50 @@ onBeforeRouteLeave(() => {
 .search-clear:hover,
 .pager-button:not(:disabled):hover {
   transform: translateY(-1px);
+}
+
+/* ---------- 窄屏筛选下拉（≤860px 才出现，替代右侧分类/标签栏） ---------- */
+
+.filter-bar {
+  display: none;
+  gap: 12px;
+  margin-top: 14px;
+  /* 聚焦描边 / 选中态跟着主题走，不要 Element Plus 默认蓝 */
+  --el-color-primary: #8a5a3b;
+  --el-color-primary-light-3: #b98a5e;
+  --el-color-primary-light-5: #cfa986;
+  --el-color-primary-light-7: #e2cbaf;
+  --el-color-primary-light-8: #ecdcc6;
+  --el-color-primary-light-9: #f4ebdd;
+  --el-color-primary-dark-2: #6f4730;
+  --el-text-color-placeholder: var(--text-muted);
+  --el-border-color-hover: rgba(138, 90, 59, 0.45);
+  --el-fill-color-blank: var(--panel-bg);
+}
+
+.filter-select {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.filter-bar :deep(.el-select__wrapper) {
+  min-height: 46px;
+  border-radius: 14px;
+  background: var(--panel-bg);
+  box-shadow:
+    0 0 0 1px rgba(138, 90, 59, 0.24) inset,
+    0 6px 16px rgba(120, 88, 58, 0.08);
+}
+
+.filter-bar :deep(.el-select__wrapper.is-focused) {
+  box-shadow:
+    0 0 0 1px var(--accent-brown) inset,
+    0 8px 20px rgba(120, 88, 58, 0.14);
+}
+
+.filter-bar :deep(.el-select__selected-item) {
+  color: var(--text-strong);
+  font-size: 14px;
 }
 
 .filter-hint {
@@ -777,18 +891,13 @@ onBeforeRouteLeave(() => {
     grid-template-columns: 1fr;
   }
 
+  /* 窄屏不再把分类/标签栏折到列表下面，改用搜索栏下方那两个下拉框 */
   .sidebar {
-    position: static;
+    display: none;
   }
 
-  .filter-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-  }
-
-  .filter-tag {
-    width: auto;
-    min-width: 92px;
+  .filter-bar {
+    display: flex;
   }
 }
 </style>

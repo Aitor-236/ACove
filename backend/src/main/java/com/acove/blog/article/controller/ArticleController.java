@@ -2,7 +2,9 @@ package com.acove.blog.article.controller;
 
 import com.acove.blog.article.dto.ArticleVO;
 import com.acove.blog.article.dto.ArticlePublicDetailVO;
+import com.acove.blog.article.dto.HomeArticleVO;
 import com.acove.blog.article.service.ArticleService;
+import com.acove.blog.article.service.HomeArticleService;
 import com.acove.blog.common.result.Result;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ArticleController {
 
     private final ArticleService articleService;
+    private final HomeArticleService homeArticleService;
 
     /**
      * 公开的文章卡片分页列表，只返回已发布文章。
@@ -39,5 +42,14 @@ public class ArticleController {
     @GetMapping("/detail/{id}")
     public Result<ArticlePublicDetailVO> detail(@PathVariable Long id) {
         return Result.success(articleService.getPublishedDetail(id));
+    }
+
+    /**
+     * 首页动态列表：后台「首页展示」挑好的已发布文章按顺序返回，
+     * 一篇都没挑时回退到最近三篇已发布文章；同时带上已发布文章总数。
+     */
+    @GetMapping("/home")
+    public Result<HomeArticleVO> home() {
+        return Result.success(homeArticleService.listHomeArticles());
     }
 }

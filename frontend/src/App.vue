@@ -124,4 +124,34 @@ a {
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
 }
+
+/* ---------- 前台 el-select 的下拉面板（popper） ---------- */
+/*
+ * 下拉面板被 teleport 到 body 上，跑出页面作用域、拿不到页面的 token，
+ * 会退回 Element Plus 默认的蓝色和直角，所以给带 front-select-popper 的 popper
+ * 单独补一套棕色主题（后台对应的是 styles/admin.css 里的 admin-select-popper）。
+ * 用法：<el-select popper-class="front-select-popper">。
+ */
+.el-popper.front-select-popper {
+  --el-color-primary: #8a5a3b;
+  --el-color-primary-light-3: #b98a5e;
+  --el-color-primary-light-5: #cfa986;
+  --el-color-primary-light-7: #e2cbaf;
+  --el-color-primary-light-8: #ecdcc6;
+  --el-color-primary-light-9: #f4ebdd;
+  --el-color-primary-dark-2: #6f4730;
+  --el-bg-color-overlay: var(--panel-bg);
+  --el-border-color-light: var(--panel-border);
+  --el-fill-color-light: #f6efe3;
+  --el-text-color-regular: var(--text-body);
+  --el-box-shadow-light: 0 18px 40px rgba(120, 88, 58, 0.18);
+  --el-border-radius-base: 12px;
+  --el-popper-border-radius: 16px;
+}
+
+/* 选项行稍微高一点，手指点在窄屏上更好按 */
+.el-popper.front-select-popper .el-select-dropdown__item {
+  height: 40px;
+  line-height: 40px;
+}
 </style>
