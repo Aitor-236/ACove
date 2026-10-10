@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave } from 'vue-router'
+import { ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { VueDraggable } from 'vue-draggable-plus'
 import request from '@/utils/request'
+import { autoSaveStatusText, useAutoSave } from '@/composables/useAutoSave'
 
 /** 文章卡片（后台列表、已选列表都用同一套字段，来自 ArticleVO） */
 interface AdminArticleItem {
@@ -36,16 +38,62 @@ const candidateTotal = ref(0)
 
 const selectedLoading = ref(false)
 const candidateLoading = ref(false)
-const saving = ref(false)
 const keywordInput = ref('')
 const appliedKeyword = ref('')
+/** 回填已选列表期间不触发自动保存 */
+const hydrating = ref(false)
 
 const selectedIdSet = computed(() => new Set(selected.value.map((article) => article.id)))
 
-/** 顺序或成员有变化才允许保存 */
+/** 顺序或成员跟后端保存的不一致：既驱动离开确认，也决定状态文字 */
 const dirty = computed(
   () => selected.value.map((article) => article.id).join(',') !== savedIds.value.join(',')
 )
+
+/**
+ * 首页展示没有手动保存按钮：增删 / 拖拽停下来 300ms 就整体覆盖保存一次，
+ * 空列表也算一次有效改动（保存后首页回退到最近三篇）。
+ */
+const {
+  state: autoSaveState,
+  lastSavedAt: autoSavedAt,
+  pending: autoSavePending,
+  schedule: scheduleAutoSave,
+  flush: flushAutoSave
+} = useAutoSave({
+  delay: 300,
+  save: async () => {
+    const articleIds = selected.value.map((article) => article.id)
+    await request.post('/admin/home-article/save', { articleIds }, { silent: true })
+    savedIds.value = articleIds
+  }
+})
+
+const autoSaveHint = computed(() => {
+  const state = autoSaveState.value
+  // 保存中 / 失败要马上反馈；防抖等待期间不打扰，存完再显示「已保存 HH:mm」
+  if (state === 'saving' || state === 'error') return autoSaveStatusText(state, autoSavedAt.value)
+  if (autoSavePending.value || dirty.value) return ''
+  return autoSaveStatusText(state, autoSavedAt.value)
+})
+
+watch(
+  selected,
+  () => {
+    if (hydrating.value) return
+    scheduleAutoSave()
+  },
+  { deep: true }
+)
+
+/** 还有没落库的改动（排队中的 + 保存失败的） */
+function hasUnsavedChanges() {
+  return dirty.value || autoSavePending.value
+}
+
+function retryAutoSave() {
+  void flushAutoSave()
+}
 
 function formatDateTime(value?: string | null) {
   if (!value) return '—'
@@ -58,6 +106,7 @@ function isSelected(id: number) {
 
 async function loadSelected() {
   selectedLoading.value = true
+  hydrating.value = true
   try {
     const res = (await request.get('/admin/home-article/list')) as { data: AdminArticleItem[] }
     selected.value = res.data ?? []
@@ -66,6 +115,9 @@ async function loadSelected() {
     selected.value = []
     savedIds.value = []
   } finally {
+    // 等 selected 的 watcher 跑完再解除标记，回填不会被当成一次改动
+    await nextTick()
+    hydrating.value = false
     selectedLoading.value = false
   }
 }
@@ -120,23 +172,38 @@ async function reloadAll() {
   await Promise.all([loadSelected(), loadCandidates()])
 }
 
-async function save() {
-  if (saving.value || !dirty.value) return
-  saving.value = true
+/** 有改动没存成功时拦一下离开，避免白改 */
+onBeforeRouteLeave(async () => {
+  if (!hasUnsavedChanges()) return true
+
+  const saved = await flushAutoSave()
+  if (saved) return true
+
   try {
-    await request.post('/admin/home-article/save', {
-      articleIds: selected.value.map((article) => article.id)
-    })
-    ElMessage.success('首页展示已保存')
-    await reloadAll()
+    await ElMessageBox.confirm(
+      '首页展示还有改动没保存成功，离开后这次修改会丢失，确定离开吗？',
+      '未保存的修改',
+      { confirmButtonText: '离开', cancelButtonText: '继续编辑', type: 'warning' }
+    )
+    return true
   } catch {
-    // 错误提示由 request 拦截器统一处理
-  } finally {
-    saving.value = false
+    return false
   }
+})
+
+/** 关标签页 / 刷新时浏览器原生的离开确认 */
+function handleBeforeUnload(event: BeforeUnloadEvent) {
+  if (!hasUnsavedChanges()) return
+  event.preventDefault()
+  event.returnValue = ''
 }
 
-onMounted(reloadAll)
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  void reloadAll()
+})
+
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
 
 <template>
@@ -147,10 +214,17 @@ onMounted(reloadAll)
       </div>
 
       <div class="admin-page-actions">
+        <button
+          v-if="autoSaveState === 'error'"
+          type="button"
+          class="save-status is-error"
+          @click="retryAutoSave"
+        >
+          {{ autoSaveHint }}
+        </button>
+        <span v-else-if="autoSaveHint" class="save-status">{{ autoSaveHint }}</span>
+
         <el-button :loading="selectedLoading || candidateLoading" @click="reloadAll">刷新</el-button>
-        <el-button type="primary" :disabled="!dirty" :loading="saving" @click="save">
-          保存
-        </el-button>
       </div>
     </header>
 
@@ -316,6 +390,24 @@ onMounted(reloadAll)
   color: var(--text-muted);
   font-size: 12.5px;
   line-height: 1.6;
+}
+
+/* 自动保存状态：和「刷新」按钮并排的一行小字，失败时点一下重试 */
+.save-status {
+  align-self: center;
+  margin-right: 2px;
+  padding: 0;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12.5px;
+  background: transparent;
+}
+
+.save-status.is-error {
+  color: var(--trend-down, #b4553c);
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .panel-foot-hint {

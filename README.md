@@ -417,3 +417,4 @@ docker compose exec -T mysql sh -c \
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
 - 后台「文章管理 → 编辑文章」的正文编辑器是 Typodown（`@vemonet/typodown`，CodeMirror 6 实时预览：光标所在结构显示原始标记、移开即渲染），包在 `frontend/src/components/MarkdownEditor.vue` 里，主题写在 `frontend/src/styles/typodown.css`；它只有 0.0.x、单人维护、也没有给外部加扩展的入口，`::: code-group` 在编辑器里只能按源码文本显示。**待办**：以后自己用 CodeMirror 6 写一套替换它（含把 `::: code-group` 在编辑器里也渲染成标签页），新项目占位在 `~/Desktop/AEditor`（技术栈待定）。
+- 文章编辑页是「先看后改」：打开已有文章先是只读的渲染预览（正文走前台那套 Markdown），点右上角「编辑」才进入可写状态。**编辑态下只有标题 / 摘要 / 正文会自动保存**（停下来约 1s 防抖落库，失败自动重试 2 次，顶部显示「正在保存 / 已保存 15:32 / 保存失败 · 重试」），**分类和标签不自动保存**，改完要点「保存」；「完成」回到预览时会先把待保存的文本 flush 掉。首页展示页同理：增删 / 拖拽约 300ms 后自动整体保存，没有保存按钮。两处共用 `frontend/src/composables/useAutoSave.ts`（防抖、单飞串行、重试、离开前 flush），自动保存的请求带 `silent: true`，失败不弹 toast。
