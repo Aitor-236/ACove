@@ -11,9 +11,8 @@ import {
 } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import request from '@/utils/request'
-import MarkdownEditor from '@/components/MarkdownEditor.vue'
-import { renderMarkdown } from '@/utils/markdown'
-import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
+import MarkdownPreview from '@/components/MarkdownPreview.vue'
+import MarkdownSplitEditor from '@/components/MarkdownSplitEditor.vue'
 import { autoSaveStatusText, useAutoSave } from '@/composables/useAutoSave'
 
 /** 后台文章详情（来自 GET /admin/article/{id}） */
@@ -64,8 +63,8 @@ const route = useRoute()
 const router = useRouter()
 
 const formRef = ref<FormInstance>()
-/** 正文编辑器（Typodown 封装），插入图片时往它的光标处塞 Markdown */
-const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null)
+/** 正文编辑器（左源码 + 右预览的分屏），插入图片时往它的光标处塞 Markdown */
+const editorRef = ref<InstanceType<typeof MarkdownSplitEditor> | null>(null)
 const form = reactive({
   title: '',
   summary: '',
@@ -290,12 +289,6 @@ async function loadDetail(id: string, { enterPreview = false }: { enterPreview?:
 function goBack() {
   void router.push('/admin/articles')
 }
-
-/** 预览态正文：和前台详情页共用一份渲染规则（代码块、表格、代码组都能看） */
-const previewContent = computed(() => {
-  const source = form.content.trim()
-  return source ? renderMarkdown(source) : ''
-})
 
 /** 分类 / 标签不参与自动保存，改过之后必须点「保存」才会落库 */
 const metaDirty = computed(
@@ -703,14 +696,13 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 
         <p v-if="form.summary" class="preview-summary">{{ form.summary }}</p>
 
-        <div
-          v-if="previewContent"
-          class="markdown-body preview-body"
-          v-html="previewContent"
-          @click="handleCodeGroupClick"
-          @keydown="handleCodeGroupKeydown"
-        ></div>
-        <p v-else class="preview-empty">正文还是空的，点右上角「编辑」开始写。</p>
+        <!-- 正文渲染：和前台详情页共用 components/MarkdownPreview.vue -->
+        <div class="preview-body">
+          <MarkdownPreview
+            :source="form.content"
+            empty-text="正文还是空的，点右上角「编辑」开始写。"
+          />
+        </div>
       </section>
 
       <section v-else class="admin-panel editor-panel">
@@ -787,8 +779,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
           </el-form-item>
 
           <el-form-item label="正文（Markdown）" prop="content">
-            <!-- 正文用 Typodown：光标所在结构显示源码，移开即渲染（组件见 components/MarkdownEditor.vue） -->
-            <MarkdownEditor
+            <!-- 正文分屏：左 CodeMirror 源码、右 Markdown 预览（组件见 components/MarkdownSplitEditor.vue） -->
+            <MarkdownSplitEditor
               ref="editorRef"
               v-model="form.content"
               placeholder="# 标题：正文直接写 Markdown，列表、表格、代码块、引用、图片都支持"
@@ -975,12 +967,6 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
   border-top: 1px solid rgba(138, 90, 59, 0.16);
 }
 
-.preview-empty {
-  margin: 24px 0 0;
-  color: var(--text-muted);
-  font-size: 14px;
-}
-
 .editor-layout {
   display: grid;
   /* 正文编辑器已经自带实时预览，右侧只剩「文章信息」，所以这里收窄成一条侧栏 */
@@ -1089,7 +1075,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
   color: var(--text-strong);
 }
 
-@media (max-width: 1200px) {
+/* 和首页同一档断点：窄屏时正文区上下的分屏会自己转成堆叠（见 MarkdownSplitEditor） */
+@media (max-width: 1180px) {
   .editor-layout {
     grid-template-columns: 1fr;
   }

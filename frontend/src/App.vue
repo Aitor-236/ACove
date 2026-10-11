@@ -39,7 +39,7 @@ onMounted(async () => {
   --text-strong: #3f2e22;
   --text-body: rgba(74, 54, 41, 0.78);
   --text-muted: rgba(74, 54, 41, 0.58);
-  /* 最淡的一档正文色，后台 Markdown 编辑器的次要标记用（styles/typodown.css） */
+  /* 最淡的一档正文色：后台正文编辑器（MarkdownSplitEditor）的行号、Markdown 语法标记用它 */
   --text-faint: rgba(74, 54, 41, 0.38);
   --panel-bg: #fffdf9;
   --panel-alt-bg: #f8f2e7;

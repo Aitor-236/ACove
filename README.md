@@ -11,7 +11,7 @@
 | 层次 | 技术 |
 | --- | --- |
 | 后端 | Java 21、Spring Boot 4.1.1、MyBatis-Plus 3.5.15、java-jwt 4.4.0、Lombok |
-| 前端 | Vue 3.5、TypeScript 6、Vite 8、Element Plus 2.14、axios、vue-router 5、marked + DOMPurify + highlight.js |
+| 前端 | Vue 3.5、TypeScript 6、Vite 8、Element Plus 2.14、axios、vue-router 5、marked + DOMPurify + highlight.js（前台正文渲染）、CodeMirror 6（后台正文编辑器） |
 | 数据库 | MySQL 8，库名 `blog_db`，字符集 `utf8mb4` / `utf8mb4_unicode_ci` |
 
 ## 目录结构
@@ -39,7 +39,7 @@ ACove/
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / Projects / About / Login
 │       ├── views/admin/          # 后台页面：文章、分类、标签、待办清单、开源项目、个人管理、网站设置、访问统计 + AdminLayout
-│       ├── components/DockNav.vue
+│       ├── components/           # DockNav（底部导航）、MarkdownPreview（正文渲染块）、MarkdownSplitEditor（后台分屏编辑器）
 │       ├── router/index.ts
 │       └── utils/request.ts      # axios 实例（baseURL = /api）
 ├── sql/                          # 账号脚本 + 历史存档（表结构已交给 Flyway）
@@ -416,5 +416,5 @@ docker compose exec -T mysql sh -c \
 - 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表，以后改表结构只需新增下一个 `Vn__xxx.sql`。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
-- 后台「文章管理 → 编辑文章」的正文编辑器是 Typodown（`@vemonet/typodown`，CodeMirror 6 实时预览：光标所在结构显示原始标记、移开即渲染），包在 `frontend/src/components/MarkdownEditor.vue` 里，主题写在 `frontend/src/styles/typodown.css`；它只有 0.0.x、单人维护、也没有给外部加扩展的入口，`::: code-group` 在编辑器里只能按源码文本显示。**待办**：以后自己用 CodeMirror 6 写一套替换它（含把 `::: code-group` 在编辑器里也渲染成标签页），新项目占位在 `~/Desktop/AEditor`（技术栈待定）。
+- 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。
 - 文章编辑页是「先看后改」：打开已有文章先是只读的渲染预览（正文走前台那套 Markdown），点右上角「编辑」才进入可写状态。**编辑态下只有标题 / 摘要 / 正文会自动保存**（停下来约 1s 防抖落库，失败自动重试 2 次，顶部显示「正在保存 / 已保存 15:32 / 保存失败 · 重试」），**分类和标签不自动保存**，改完要点「保存」；「完成」回到预览时会先把待保存的文本 flush 掉。首页展示页同理：增删 / 拖拽约 300ms 后自动整体保存，没有保存按钮。两处共用 `frontend/src/composables/useAutoSave.ts`（防抖、单飞串行、重试、离开前 flush），自动保存的请求带 `silent: true`，失败不弹 toast。
