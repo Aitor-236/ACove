@@ -41,9 +41,19 @@ const html = computed(() => {
 </template>
 
 <style scoped>
+/*
+ * 正文为空时的占位（分屏右栏显示「正文预览」）：在预览区里居中，
+ * 一开始写正文就整块消失（模板里的 v-if / v-else）。
+ */
 .markdown-preview-empty {
+  display: flex;
+  min-height: 100%;
+  align-items: center;
+  justify-content: center;
   margin: 0;
-  color: var(--text-muted);
+  color: var(--text-faint, rgba(74, 54, 41, 0.38));
   font-size: 14px;
+  letter-spacing: 0.08em;
+  text-align: center;
 }
 </style>

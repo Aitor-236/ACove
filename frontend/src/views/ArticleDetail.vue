@@ -241,73 +241,10 @@ watch(
   font-size: 13px;
 }
 
+/* 正文排版与代码块样式统一在全局 styles/markdown.css（前台详情页 / 后台预览共用），
+   这里只留详情页自己的上边距（标题块与正文之间那一段） */
 .markdown-body {
   margin-top: 28px;
-  color: var(--text-body);
-  font-size: 16px;
-  line-height: 1.9;
-  word-break: break-word;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3),
-.markdown-body :deep(h4) {
-  margin: 32px 0 14px;
-  color: var(--text-strong);
-  line-height: 1.4;
-}
-
-.markdown-body :deep(h2) {
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.18);
-  font-size: 22px;
-}
-
-.markdown-body :deep(h3) {
-  font-size: 19px;
-}
-
-.markdown-body :deep(p) {
-  margin: 0 0 18px;
-}
-
-.markdown-body :deep(a) {
-  color: var(--accent-brown);
-  text-decoration: underline;
-}
-
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  margin: 0 0 18px;
-  padding-left: 24px;
-}
-
-.markdown-body :deep(li) {
-  margin-bottom: 8px;
-}
-
-.markdown-body :deep(blockquote) {
-  margin: 0 0 18px;
-  padding: 12px 18px;
-  border-left: 4px solid var(--accent-brown-soft);
-  border-radius: 0 12px 12px 0;
-  color: var(--text-body);
-  background: var(--panel-alt-bg);
-}
-
-.markdown-body :deep(img) {
-  display: block;
-  max-width: 100%;
-  margin: 0 auto 20px;
-  border-radius: 16px;
-  box-shadow: 0 12px 28px rgba(120, 88, 58, 0.2);
-}
-
-.markdown-body :deep(hr) {
-  margin: 28px 0;
-  border: none;
-  border-top: 1px solid rgba(138, 90, 59, 0.22);
 }
 
 .state-card {

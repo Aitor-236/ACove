@@ -410,10 +410,7 @@ defineExpose({
 
       <el-splitter-panel min="24%">
         <div ref="previewRef" class="pane pane-preview">
-          <MarkdownPreview
-            :source="previewSource"
-            empty-text="左边开始写，这里会实时显示渲染效果。"
-          />
+          <MarkdownPreview :source="previewSource" empty-text="正文预览" />
         </div>
       </el-splitter-panel>
     </el-splitter>
@@ -423,25 +420,48 @@ defineExpose({
 <style scoped>
 .split-editor {
   width: 100%;
+  /* 左右（堆叠时上下）两块之间的中缝宽度：各让一半 */
+  --pane-gap: 6px;
 }
 
 /* 分屏整体高度：和上一版编辑器同一档手感；堆叠态两栏加起来要放得下 */
 .split-editor :deep(.el-splitter) {
   height: clamp(460px, 66vh, 780px);
+  /* 中缝露出来的底色：两栏各让 6px，缝里是米白，读起来是「两块 + 一道缝」，
+     而不是贴在一起的两条描边 */
+  background: var(--bg-cream, #f6f1e7);
 }
 
 .split-editor.is-stacked :deep(.el-splitter) {
   height: clamp(620px, 84vh, 980px);
 }
 
-/* 中缝：默认细棕线，hover / 拖动时变亮 */
-.split-editor :deep(.el-splitter-bar) {
-  background: var(--panel-border);
+/*
+ * 中缝：Element Plus 的分割条本身宽度是 0（只负责拖动热区），看得见的是 dragger 的
+ * :before / :after——默认是一条贯穿整高的 2px 淡灰竖线，太长太硬。
+ * 这里把它收成中间一小段圆角短杠，再让左右面板各让出 --pane-gap，
+ * 两个区域就是「并排的两块 + 中间一道缝」，而不是被一条线从头划到底。
+ */
+.split-editor :deep(.el-splitter-bar__dragger-horizontal:before),
+.split-editor :deep(.el-splitter-bar__dragger-horizontal:after) {
+  width: 3px;
+  height: 46px;
+  border-radius: 999px;
+  background: var(--panel-border-strong, rgba(138, 90, 59, 0.22));
 }
 
-.split-editor :deep(.el-splitter-bar:hover),
-.split-editor :deep(.el-splitter-bar-active) {
-  background: var(--accent-brown-soft);
+.split-editor :deep(.el-splitter-bar__dragger-vertical:before),
+.split-editor :deep(.el-splitter-bar__dragger-vertical:after) {
+  width: 46px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--panel-border-strong, rgba(138, 90, 59, 0.22));
+}
+
+/* 悬停 / 拖动时短杠亮成棕色：Element Plus 自带的 hover 只有默认色，这里统一接管 */
+.split-editor :deep(.el-splitter-bar__dragger:hover:not(.is-disabled):before),
+.split-editor :deep(.el-splitter-bar__dragger-active:before) {
+  background: var(--accent-brown-soft, #b98a5e);
 }
 
 .pane {
@@ -453,37 +473,36 @@ defineExpose({
   background: var(--panel-bg);
 }
 
+/* 横向分屏：左块让出右半边中缝 */
+.pane-source {
+  margin-right: var(--pane-gap);
+}
+
+/* 右栏正文：让出左半边中缝，滚动在这里发生。正文样式全部来自全局 styles/markdown.css，
+   不覆盖尺寸变量、也不给 table 另写规则——预览要和前台详情页看起来一模一样 */
+.pane-preview {
+  margin-left: var(--pane-gap);
+  padding: 18px 20px;
+  overflow-y: auto;
+}
+
+/* 堆叠态（≤1180px）：中缝转成上下方向，高度也要扣掉这 6px，别把圆角挤出面板 */
+.split-editor.is-stacked .pane-source {
+  height: calc(100% - var(--pane-gap));
+  margin: 0 0 var(--pane-gap);
+}
+
+.split-editor.is-stacked .pane-preview {
+  height: calc(100% - var(--pane-gap));
+  margin: var(--pane-gap) 0 0;
+}
+
 .pane:focus-within {
   border-color: var(--accent-brown-soft);
 }
 
 .source-host {
   height: 100%;
-}
-
-/* 右栏正文：滚动在这里发生（styles/markdown.css 管正文样式，这里只管框与留白） */
-.pane-preview {
-  padding: 18px 20px;
-  overflow-y: auto;
-  color: var(--text-body);
-  font-size: 14px;
-  line-height: 1.8;
-  overflow-wrap: anywhere;
-  --markdown-gap: 14px;
-  --markdown-font-size: 13px;
-  --code-block-radius: 14px;
-  --code-block-padding: 14px;
-  --code-block-padding-top: 34px;
-  --code-label-top: 11px;
-  --code-label-left: 14px;
-}
-
-/* 右栏只有半边宽：表格按自然列宽渲染，超宽时在表格内部横向滚动 */
-.pane-preview :deep(table) {
-  display: block;
-  width: max-content;
-  max-width: 100%;
-  overflow-x: auto;
 }
 
 /* 右上角「插入图片」：常驻但低调，鼠标进源码区或聚焦时亮起来 */
