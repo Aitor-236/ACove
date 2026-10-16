@@ -11,6 +11,7 @@ import {
   Folder,
   House,
   List,
+  Picture,
   Setting,
   TrendCharts,
   User
@@ -52,7 +53,8 @@ const navGroups: NavGroup[] = [
       { label: '新建文章', icon: EditPen, to: '/admin/articles/new' },
       { label: '首页展示', icon: House, to: '/admin/home-articles' },
       { label: '分类管理', icon: Folder, to: '/admin/categories' },
-      { label: '标签管理', icon: CollectionTag, to: '/admin/tags' }
+      { label: '标签管理', icon: CollectionTag, to: '/admin/tags' },
+      { label: '图库管理', icon: Picture, to: '/admin/galleries' }
     ]
   },
   {

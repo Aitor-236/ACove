@@ -25,6 +25,11 @@ const routes = [
     component: () => import('@/views/Gallery.vue')
   },
   {
+    path: '/gallery/:id',
+    name: 'GalleryDetail',
+    component: () => import('@/views/GalleryDetail.vue')
+  },
+  {
     path: '/projects',
     name: 'Projects',
     component: () => import('@/views/Projects.vue')
@@ -85,6 +90,11 @@ const routes = [
         path: 'projects',
         name: 'AdminProjects',
         component: () => import('@/views/admin/AdminProjects.vue')
+      },
+      {
+        path: 'galleries',
+        name: 'AdminGalleries',
+        component: () => import('@/views/admin/AdminGallery.vue')
       },
       {
         path: 'profile',

@@ -9,13 +9,14 @@ const route = useRoute()
 const navItems = [
   { to: '/', label: '主页', icon: HomeFilled },
   { to: '/articles', label: '文章', icon: Document },
-  { to: '/gallery', label: '画', icon: Picture },
+  { to: '/gallery', label: '图库', icon: Picture },
   { to: '/projects', label: '开源项目', icon: Collection },
   { to: '/about', label: '个人简介', icon: User }
 ]
 
 function isActive(path: string) {
-  return route.path === path
+  if (path === '/') return route.path === path
+  return route.path === path || route.path.startsWith(`${path}/`)
 }
 </script>
 
