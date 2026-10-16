@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -16,6 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.acove.blog.article.dto.UploadImageVO;
 import com.acove.blog.article.service.AdminUploadService;
 import com.acove.blog.common.exception.BusinessException;
+import com.acove.blog.common.utils.UploadFileNaming;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,8 +46,7 @@ public class AdminUploadServiceImpl implements AdminUploadService {
         }
 
         String extension = resolveExtension(file);
-        String filename = System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8)
-                + "." + extension;
+        String filename = UploadFileNaming.create(UploadFileNaming.Module.ARTICLE, extension);
 
         Path imageDir = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(ARTICLE_IMAGE_DIR);
         try {

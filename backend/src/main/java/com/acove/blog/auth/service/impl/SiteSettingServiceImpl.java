@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,6 +19,7 @@ import com.acove.blog.auth.entity.SiteSetting;
 import com.acove.blog.auth.mapper.SiteSettingMapper;
 import com.acove.blog.auth.service.SiteSettingService;
 import com.acove.blog.common.exception.BusinessException;
+import com.acove.blog.common.utils.UploadFileNaming;
 
 import lombok.RequiredArgsConstructor;
 
@@ -107,8 +107,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         }
 
         String extension = resolveExtension(file);
-        String filename = System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8)
-                + "." + extension;
+        String filename = UploadFileNaming.create(UploadFileNaming.Module.HERO, extension);
 
         Path heroDir = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(HERO_IMAGE_DIR);
         try {

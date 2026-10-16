@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +20,7 @@ import com.acove.blog.auth.entity.SysUser;
 import com.acove.blog.auth.mapper.SysUserMapper;
 import com.acove.blog.auth.service.AdminUserService;
 import com.acove.blog.common.exception.BusinessException;
+import com.acove.blog.common.utils.UploadFileNaming;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 
 import lombok.RequiredArgsConstructor;
@@ -110,8 +110,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
 
         String extension = resolveExtension(file);
-        String filename = existing.getId() + "-" + System.currentTimeMillis() + "-"
-                + UUID.randomUUID().toString().substring(0, 8) + "." + extension;
+        String filename = UploadFileNaming.create(UploadFileNaming.Module.AVATAR, extension);
 
         Path avatarDir = Paths.get(uploadDir).toAbsolutePath().normalize().resolve("avatar");
         try {
