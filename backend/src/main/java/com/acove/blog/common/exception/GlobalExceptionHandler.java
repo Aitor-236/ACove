@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler (MaxUploadSizeExceededException.class)
     public Result<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException ex) {
         log.warn("Uploaded file is too large: {}", ex.getMessage());
-        return Result.error(400, "上传的图片过大，头像不能超过 5MB");
+        return Result.error(400, "上传的图片不能超过 5MB");
     }
 
     @ExceptionHandler (Exception.class)

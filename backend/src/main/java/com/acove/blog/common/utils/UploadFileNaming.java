@@ -27,7 +27,8 @@ public final class UploadFileNaming {
     public enum Module {
         AVATAR("avatar"),
         HERO("hero"),
-        ARTICLE("article");
+        ARTICLE("article"),
+        GALLERY("gallery");
 
         private final String value;
 
