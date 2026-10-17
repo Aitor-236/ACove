@@ -1,9 +1,10 @@
-# 主机安装的 Nginx 示例（不用 Docker）。按实际域名和前端发布目录修改后，
+# 主机安装的 Nginx 示例（不用 Docker）。无域名时也能通过服务器 IP 访问。
+# 按实际情况修改前端发布目录；有域名后可把 server_name 改为域名。
 # 放入 Nginx 的站点配置目录；此文件是 server 配置，不是完整 nginx.conf。
 # 首次启用先通过 HTTP 检查站点，再在主机上用 Certbot 的 Nginx 集成配置 HTTPS。
 server {
-    listen 80;
-    server_name example.com www.example.com;
+    listen 80 default_server;
+    server_name _;
 
     root /var/www/acove;
     index index.html;

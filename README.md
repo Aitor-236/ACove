@@ -36,7 +36,8 @@ ACove/
 │           └── db/migration/              # Flyway 迁移脚本（V1__baseline.sql 起，建表的唯一来源）
 ├── frontend/                     # Vue 3 前端
 │   ├── Dockerfile                # 多阶段构建：Node 构建 → Nginx 托管
-│   ├── nginx.conf.template       # SPA 回退 + /api 反代（域名走 .env 的 SITE_DOMAIN）
+│   ├── nginx.conf.template       # 默认 HTTP：支持无域名通过 IP 访问
+│   ├── nginx.https.conf.template # 启用 HTTPS 后使用的配置
 │   ├── nginx.host.conf.example   # 无 Docker 时主机 Nginx 的配置示例
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / GalleryDetail / Projects / About / Login
@@ -50,6 +51,7 @@ ACove/
 │   ├── tests/                    # 隔离 MySQL 8.4 邮箱唯一性回归
 │   └── legacy/                   # Flyway 之前的建库 / 增量脚本，只读存档，不再被执行
 ├── docker-compose.yml            # 服务器部署编排：MySQL + 后端 + 前端
+├── docker-compose.https.yml      # 启用 HTTPS 时增加端口与证书挂载
 ├── deploy.sh                     # 一键部署 / 运维脚本（init / up / account / backup …）
 └── .env.example                  # 部署配置模板（复制成 .env 后使用，.env 不入库）
 ```
@@ -305,7 +307,8 @@ npm run format              # Prettier 格式化
 | `backend/Dockerfile` | 多阶段构建：Maven 编译 → JRE 21 运行，非 root 用户，配置全部走环境变量 |
 | `backend/src/main/resources/application-docker.yml` | `docker` profile：数据库、JWT、上传目录从环境变量读取 |
 | `frontend/Dockerfile` | 多阶段构建：Node 构建（含 `vue-tsc` 类型检查）→ Nginx 托管 |
-| `frontend/nginx.conf.template` | SPA history 回退 + `/api` 反代到后端容器（去掉 `/api` 前缀）；启动时由 nginx 的 envsubst 把 `${SITE_DOMAIN}` 替换成 `.env` 里的域名 |
+| `frontend/nginx.conf.template`、`frontend/nginx.https.conf.template` | HTTP / HTTPS 两套 Nginx 配置，都支持 SPA history 回退和 `/api` 反代 |
+| `docker-compose.https.yml` | 启用 HTTPS 时额外映射 443 并挂载证书，由 `deploy.sh` 自动加载 |
 | `docker/certbot-deploy-hook.sh` | certbot 续期钩子：证书更新后重载前端容器里的 nginx |
 | `docker/mysql-client.cnf` | 挂进 MySQL 容器的客户端配置，把 `mysql` / `mysqldump` 的字符集固定成 utf8mb4（不加会把中文种子数据写成乱码） |
 | `deploy.sh` | 服务器一键脚本：`init` / `up` / `account` / `backup` / `logs` / `update` …；`up` 会等到所有容器健康检查通过才返回 |
@@ -326,16 +329,17 @@ BLOG_JWT_SECRET=<自动生成的随机串>
 BLOG_HTTP_PORT=80        # 站点对外端口，80 被占用就改成 8081 之类
 BLOG_DB_PORT=13306       # MySQL 映射到宿主机的端口（只绑 127.0.0.1）
 BLOG_DB_NAME=blog_db
-SITE_DOMAIN=acove.top    # 站点主域名：nginx 的 server_name / HTTPS 跳转 / 证书路径都用它
+SITE_DOMAIN=            # 默认留空，无域名也能用 IP 访问
+SITE_HTTPS=false        # 默认只开放 HTTP，不需要证书
 ```
 
 #### 2. 启动服务
 
 ```bash
-./deploy.sh up          # 等价于 docker compose up -d --build
+./deploy.sh up          # 构建并启动；按 .env 自动选择 HTTP / HTTPS 编排
 ```
 
-首次启动时 MySQL 建出 `.env` 里 `BLOG_DB_NAME` 指定的空库，随后后端启动、由 Flyway 应用 `db/migration` 里的迁移把表建出来（不预置账号）。想看迁移状态用 `./deploy.sh info`，想手动触发一次用 `./deploy.sh migrate`。起来之后：
+首次启动不需要域名或证书。MySQL 建出 `.env` 里 `BLOG_DB_NAME` 指定的空库，随后后端启动、由 Flyway 应用 `db/migration` 里的迁移把表建出来（不预置账号）。想看迁移状态用 `./deploy.sh info`，想手动触发一次用 `./deploy.sh migrate`。起来之后：
 
 - 前台：`http://<服务器IP>/`（改了端口就是 `http://<服务器IP>:8081/`）
 - 后台：`http://<服务器IP>/login`
@@ -369,54 +373,34 @@ docker compose run --rm --no-deps -T --user root \
 
 #### 5. 域名与 HTTPS
 
-前端容器里的 Nginx 同时监听 80 和 443：**80 只做 ACME 校验和跳转，443 才是站点本体**，证书由宿主机上的 certbot 以 webroot 模式签发（宿主机装 Nginx 去抢 80 端口的 `certbot --nginx` 这条路在 Docker 部署里走不通，80 被容器占着）。
+默认配置 `SITE_DOMAIN=`、`SITE_HTTPS=false`，站点直接通过 `http://<服务器IP>/` 访问，前端容器只映射 HTTP 端口。没有域名时无需签发证书，也无需开放 443。若更改了 `BLOG_HTTP_PORT`，地址要带相应端口。
 
-准备：域名 A 记录指向服务器 IP，安全组 / 防火墙放行 **80 和 443**。
+已有 HTTPS 部署升级时，原 `.env` 不会被模板覆盖；请先在原 `.env` 中补上 `SITE_HTTPS=true`，保留已有 `SITE_DOMAIN` 和证书，再执行 `./deploy.sh up`。
 
-##### 已经有证书的机器（日常更新）
-
-```bash
-docker compose up -d --build        # 或 ./deploy.sh up
-```
-
-证书在 `/etc/letsencrypt`，由 compose 只读挂载进前端容器，重建容器会自动读到。
-
-##### 首次签发（服务器上还没有证书）
-
-注意顺序：证书不存在时 nginx 起不来，所以先用一个临时容器占住 80 端口把证书签出来，再启动整套服务。
+以后取得域名时，先将域名的 A 记录指向服务器 IP，放行公网 80 端口，然后运行：
 
 ```bash
-sudo mkdir -p /var/www/certbot
-
-# 1) 临时用 nginx 容器只服务 ACME 校验目录（镜像可换成国内加速地址）
-sudo docker run -d --rm --name acme-bootstrap \
-  -p 80:80 -v /var/www/certbot:/usr/share/nginx/html:ro nginx:alpine
-
-# 2) 签发（换成自己的域名和邮箱）
-sudo certbot certonly --webroot -w /var/www/certbot \
-  -d "$SITE_DOMAIN" -d "www.$SITE_DOMAIN" \
-  --non-interactive --agree-tos --no-eff-email
-
-# 3) 撤掉临时容器，启动整套服务
-sudo docker rm -f acme-bootstrap
-docker compose up -d --build
+./deploy.sh site blog.example.com   # 写入 SITE_DOMAIN；继续通过 HTTP 访问
 ```
 
-续期由 certbot 自己的定时任务完成（apt 装的 certbot 会带 `certbot.timer` 和 `/etc/cron.d/certbot`），它沿用同一份 webroot 配置，不需要停容器。装上 deploy hook 后，续期完会自动重载容器里的 nginx：
+需要 HTTPS 时，在宿主机安装 `certbot`，放行公网 443 端口，再运行（邮箱用于证书到期通知）：
 
 ```bash
-sudo chmod +x docker/certbot-deploy-hook.sh
-sudo ln -sf "$PWD/docker/certbot-deploy-hook.sh" /etc/letsencrypt/renewal-hooks/deploy/
-sudo certbot renew --dry-run        # 验证"签发 + 钩子"整条链
+./deploy.sh https admin@example.com
 ```
 
-几点说明：
+此命令在已运行的 HTTP 站点上通过 webroot 签发**当前域名**的证书；签发成功后才会将 `SITE_HTTPS` 设为 `true`、映射 443、重建前端容器并安装续期重载钩子。公网 80 端口必须直达本站点；若更改 `BLOG_HTTPS_PORT`，HTTPS 地址和跳转也会使用该端口。证书在宿主机 `/etc/letsencrypt`，由 HTTPS 配置只读挂载；Certbot 的定时续期服务需在宿主机启用，可用 `sudo certbot renew --dry-run` 验证。普通更新继续使用 `./deploy.sh up`，脚本会根据 `.env` 自动加载 HTTPS 编排。
 
-- 域名只在一处配置：`.env` 里的 `SITE_DOMAIN`。前端 nginx 的配置文件是一份模板（`frontend/nginx.conf.template`），容器启动时由 nginx 官方镜像的 entrypoint 用 `envsubst` 把 `${SITE_DOMAIN}` 替换成你的域名，所以换域名只要改 `.env` 再 `./deploy.sh up`，不用再动 nginx 配置。
-- 只有证书路径 `/etc/letsencrypt/live/<域名>/` 变了才需要动配置；续期本身只更新文件内容，`nginx -s reload` 即可生效。
-- 证书和校验目录都是只读挂载，容器里的 nginx 不会去改它们。
-- 前端资源路径和 `/api` 都是同源相对路径，换域名或协议不需要重新构建镜像。
-- 想省掉 80 端口的跳转、让 HTTP 也能直接打开站点，把 `frontend/nginx.conf.template` 里 80 段的 `location /` 换成和 443 段一样的站点配置即可（不推荐，HTTPS 应该是唯一入口）。
+切回 HTTP 或更换域名时：
+
+```bash
+./deploy.sh http                    # 关闭 HTTPS，保留域名和证书
+./deploy.sh site new.example.com    # 更换域名（仍为 HTTP）
+./deploy.sh https admin@example.com # 为新域名签发证书并重新启用 HTTPS
+./deploy.sh site --clear            # 不再使用域名，仅通过 IP 的 HTTP 地址访问
+```
+
+前端资源和 `/api` 都使用同源相对路径，变更域名或协议不需要重新构建前端代码。直接调用 Docker Compose 时，HTTPS 模式要同时指定 `-f docker-compose.yml -f docker-compose.https.yml`；日常操作建议使用 `deploy.sh`。
 
 #### 6. 常见问题
 
@@ -441,8 +425,8 @@ docker compose exec -T mysql sh -c \
 ### 不用 Docker 的手动部署
 
 1. 前端在 `frontend/` 运行 `npm run build`，把 `dist/` 的内容发布到主机目录（示例使用 `/var/www/acove`）；后端在 `backend/` 运行 `./mvnw clean package`，用 `java -jar` 运行生成的 jar。让后端监听 `127.0.0.1:8080`，或按实际监听地址修改下面的反代目标。
-2. 使用 [主机 Nginx 配置示例](frontend/nginx.host.conf.example)，将 `example.com`、`www.example.com` 和 `root` 改为实际域名与前端发布目录，再放入主机 Nginx 的站点配置目录。示例把 `/api/` 反代到 `127.0.0.1:8080`，并去掉 `/api/` 前缀；它不依赖 Docker 的 `backend` 主机名或 `127.0.0.11` DNS。执行 `sudo nginx -t` 检查配置后重载 Nginx。
-3. 示例先监听 HTTP 80，确认域名已指向服务器且站点能访问后，可在主机上通过 Certbot 的 Nginx 集成签发证书并启用 HTTPS。不要使用上面 Docker 部署的证书挂载与容器重载钩子。
+2. 使用 [主机 Nginx 配置示例](frontend/nginx.host.conf.example)，将 `root` 改为实际前端发布目录，再放入主机 Nginx 的站点配置目录。示例使用 `default_server` 与 `server_name _`，没有域名也能通过服务器 IP 的 HTTP 地址访问；如主机已有默认站点，先停用它，避免重复的 `default_server`。有域名时可改为实际域名。`/api/` 会反代到 `127.0.0.1:8080` 并去掉前缀；此配置不依赖 Docker 的 `backend` 主机名或 `127.0.0.11` DNS。执行 `sudo nginx -t` 检查配置后重载 Nginx。
+3. 需要 HTTPS 时，先确认域名已指向服务器，再在主机上通过 Certbot 的 Nginx 集成签发证书并启用 HTTPS。主机部署不使用上面 Docker 部署的证书挂载与容器重载钩子。
 4. 生产环境设置独立的 `jwt.secret-key` 和 MySQL 密码。前端使用 history 模式，示例已配置找不到文件时回退到 `index.html`；上传目录也要可写并持久化，建议把 `blog.upload.dir` 设为主机上的固定绝对路径。
 
 ## 说明与待办

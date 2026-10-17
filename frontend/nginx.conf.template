@@ -1,24 +1,11 @@
 # ============================================================
-# ACove 前端容器内的 Nginx 配置模板
-#   :80  —— 只做 ACME 校验 + 健康检查探针，其余请求一律 301 到 HTTPS
-#   :443 —— 站点本体：托管 Vue 构建产物（history 模式，找不到文件回退 index.html）
-#            + /api/** 反代到后端容器，并去掉 /api 前缀（和 vite dev 代理保持一致）
-#
-# 这是 nginx 官方镜像的模板：容器启动时 entrypoint 会用 envsubst 把 ${SITE_DOMAIN}
-# 替换成 docker-compose 传入的站点域名（见 .env 的 SITE_DOMAIN），
-# 所以换域名只要改 .env，不用再动这份文件。
-#
-# 证书由宿主机上的 certbot 签发/续期到 /etc/letsencrypt，compose 里只读挂载进容器；
-# 签发步骤见 README「域名与 HTTPS」一节，续期后由 docker/certbot-deploy-hook.sh
-# 重载本容器里的 nginx 让新证书生效。
+# ACove 默认 HTTP 配置：支持无域名直接通过服务器 IP 访问。
+# HTTPS 配置在 nginx.https.conf.template，由 deploy.sh https 启用。
 # ============================================================
 
-# ---------- HTTP：只留 ACME 校验与 HTTPS 跳转 ----------
 server {
     listen       80 default_server;
-    server_name  ${SITE_DOMAIN} www.${SITE_DOMAIN} _;
-
-    charset utf-8;
+    server_name  _;
 
     # certbot 的 HTTP-01 校验文件：宿主 /var/www/certbot 只读挂载到容器同路径
     location ^~ /.well-known/acme-challenge/ {
@@ -27,42 +14,15 @@ server {
         access_log   off;
     }
 
-    # 容器健康检查探针：固定走 HTTP，不受下面的 301 影响
-    # （探针打的是 127.0.0.1，和证书里的域名对不上，用 HTTPS 探会误判失败）
     location = /healthz {
         access_log off;
         return 200 "ok\n";
     }
-
-    # 其余请求统一跳主域名的 HTTPS：用 IP 直接访问也会被引到域名上
-    location / {
-        return 301 https://${SITE_DOMAIN}$request_uri;
-    }
-}
-
-# ---------- HTTPS：站点本体 ----------
-server {
-    listen       443 ssl default_server;
-    http2        on;
-    server_name  ${SITE_DOMAIN} www.${SITE_DOMAIN} _;
-
-    ssl_certificate     /etc/letsencrypt/live/${SITE_DOMAIN}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/${SITE_DOMAIN}/privkey.pem;
-    ssl_protocols       TLSv1.2 TLSv1.3;
-    ssl_session_cache   shared:SSL:10m;
-    ssl_session_timeout 1d;
-    ssl_prefer_server_ciphers off;
 
     root  /usr/share/nginx/html;
     index index.html;
 
     charset utf-8;
-
-    # 健康检查探针（TLS 侧也留一个，方便单独排查证书/端口问题）
-    location = /healthz {
-        access_log off;
-        return 200 "ok\n";
-    }
 
     # 上传接口单文件上限 5MB（后端 spring.servlet.multipart 同值），留一点余量
     client_max_body_size 8m;

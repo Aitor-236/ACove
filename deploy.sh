@@ -10,6 +10,10 @@
 #
 # 全部命令（./deploy.sh help 可随时查看）：
 #   init [--force]            生成 .env，已存在时不覆盖（--force 覆盖）
+#   site <域名>               设置域名，保持当前 HTTP/HTTPS 模式
+#   site --clear              清空域名并切回 HTTP
+#   https <邮箱>              为已设置的域名签发证书并启用 HTTPS
+#   http                      切回 HTTP（保留域名和证书）
 #   build                     只构建镜像，不启动
 #   up | start                构建并启动全部服务
 #   down                      停止并删除容器（数据卷保留，数据不丢）
@@ -49,12 +53,20 @@ require_docker() {
 
 # 优先用 docker compose 插件，兼容老的 docker-compose 命令
 if docker compose version >/dev/null 2>&1; then
-    COMPOSE=(docker compose)
+    COMPOSE_BIN=(docker compose)
 elif command -v docker-compose >/dev/null 2>&1; then
-    COMPOSE=(docker-compose)
+    COMPOSE_BIN=(docker-compose)
 else
-    COMPOSE=(docker compose)
+    COMPOSE_BIN=(docker compose)
 fi
+
+configure_compose() {
+    COMPOSE=("${COMPOSE_BIN[@]}" -f "$ROOT_DIR/docker-compose.yml")
+    if [ "${SITE_HTTPS:-false}" = true ]; then
+        COMPOSE+=(-f "$ROOT_DIR/docker-compose.https.yml")
+    fi
+}
+configure_compose
 
 # 读取 .env，但**已经存在的环境变量优先**（和 docker compose 的规则一致）：
 # 直接 `set -a; . .env` 会把命令行传入的变量覆盖成 .env 里的空值，
@@ -82,6 +94,31 @@ load_env() {
             export "$key=$value"
         fi
     done < "$ENV_FILE"
+    configure_compose
+}
+
+# 原样保留 .env 的其他配置，只改指定键。
+set_env_value() {
+    local key="$1" value="$2" line found=0
+    local tmp
+    tmp="$(mktemp "$ROOT_DIR/.env.XXXXXX")"
+    chmod 600 "$tmp"
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [ "${line%%=*}" = "$key" ]; then
+            printf '%s=%s\n' "$key" "$value" >> "$tmp"
+            found=1
+        else
+            printf '%s\n' "$line" >> "$tmp"
+        fi
+    done < "$ENV_FILE"
+    [ "$found" -eq 1 ] || printf '%s=%s\n' "$key" "$value" >> "$tmp"
+    mv "$tmp" "$ENV_FILE"
+}
+
+valid_domain() {
+    [[ "$1" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] \
+        && [[ "$1" == *.* ]] && [[ "$1" != *..* ]] && [[ "$1" != *.-* ]] \
+        && [[ "$1" != *-. ]] && [ "${#1}" -le 253 ]
 }
 
 gen_secret() {
@@ -194,7 +231,84 @@ cmd_init() {
     chmod 600 "$ENV_FILE"
 
     log "已生成 .env：MySQL root 密码与 JWT 密钥都是随机值（权限 600）"
-    warn "请按需修改 .env 里的 SITE_DOMAIN（站点域名）、BLOG_HTTP_PORT（默认 80）等信息"
+    log "默认通过 HTTP 访问服务器 IP；域名和 HTTPS 可后续用 site / https 命令配置"
+}
+
+cmd_site() {
+    [ "$#" -eq 1 ] || die "用法：./deploy.sh site <域名> 或 ./deploy.sh site --clear"
+    [ -f "$ENV_FILE" ] || cmd_init
+    load_env
+    local domain="$1"
+    if [ "$domain" = --clear ]; then
+        export SITE_DOMAIN= SITE_HTTPS=false
+        set_env_value SITE_DOMAIN ""
+        set_env_value SITE_HTTPS false
+    else
+        valid_domain "$domain" || die "域名格式无效：$domain"
+        if [ "${SITE_HTTPS:-false}" = true ] && [ "$domain" != "${SITE_DOMAIN:-}" ]; then
+            die "当前已启用 HTTPS；先执行 ./deploy.sh http，再设置新域名并重新签发证书"
+        fi
+        export SITE_DOMAIN="$domain"
+        set_env_value SITE_DOMAIN "$domain"
+    fi
+    configure_compose
+    log "站点域名：${SITE_DOMAIN:-未设置}；协议：$([ "${SITE_HTTPS:-false}" = true ] && echo HTTPS || echo HTTP)"
+    if "${COMPOSE[@]}" ps -q frontend 2>/dev/null | grep -q .; then
+        "${COMPOSE[@]}" up -d --no-deps --force-recreate frontend
+        wait_for_healthy
+    fi
+}
+
+cmd_http() {
+    [ -f "$ENV_FILE" ] || die "先运行 ./deploy.sh init"
+    load_env
+    export SITE_HTTPS=false
+    set_env_value SITE_HTTPS false
+    configure_compose
+    log "已切换到 HTTP；证书与域名保留"
+    if "${COMPOSE[@]}" ps -q frontend 2>/dev/null | grep -q .; then
+        "${COMPOSE[@]}" up -d --no-deps --force-recreate frontend
+        wait_for_healthy
+    fi
+}
+
+cmd_https() {
+    [ "$#" -eq 1 ] || die "用法：./deploy.sh https <证书通知邮箱>"
+    [ -f "$ENV_FILE" ] || die "先运行 ./deploy.sh init"
+    load_env
+    valid_domain "${SITE_DOMAIN:-}" || die "先运行 ./deploy.sh site <域名>"
+    [ "${BLOG_HTTP_PORT:-80}" = 80 ] || die "签发证书需要公网 80 端口；先将 BLOG_HTTP_PORT 设为 80"
+    [[ "$1" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || die "请提供有效的证书通知邮箱"
+    command -v certbot >/dev/null 2>&1 || die "请先在宿主机安装 certbot"
+    require_docker
+    local -a privilege=()
+    if [ "$(id -u)" -ne 0 ]; then
+        command -v sudo >/dev/null 2>&1 || die "签发证书需要 root 或 sudo"
+        privilege=(sudo)
+    fi
+    "${privilege[@]}" mkdir -p /var/www/certbot
+    # HTTP 模式已能响应 ACME；先签发成功，再修改模式，避免失败后网站停机。
+    "${COMPOSE[@]}" up -d frontend
+    "${privilege[@]}" certbot certonly --webroot -w /var/www/certbot \
+        -d "$SITE_DOMAIN" --email "$1" --non-interactive --agree-tos --no-eff-email
+    "${privilege[@]}" mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+    "${privilege[@]}" ln -sfn "$ROOT_DIR/docker/certbot-deploy-hook.sh" /etc/letsencrypt/renewal-hooks/deploy/acove-reload.sh
+    export SITE_HTTPS=true
+    set_env_value SITE_HTTPS true
+    configure_compose
+    if ! "${COMPOSE[@]}" up -d --no-deps --force-recreate frontend \
+        || ! (wait_for_healthy); then
+        warn "HTTPS 启动失败，恢复 HTTP 配置"
+        export SITE_HTTPS=false
+        set_env_value SITE_HTTPS false
+        configure_compose
+        "${COMPOSE[@]}" up -d --no-deps --force-recreate frontend \
+            || die "HTTP 恢复也失败了，请查看 ./deploy.sh logs frontend"
+        die "HTTPS 未启用，请查看 ./deploy.sh logs frontend"
+    fi
+    local https_base="https://${SITE_DOMAIN}"
+    [ "${BLOG_HTTPS_PORT:-443}" = 443 ] || https_base="$https_base:${BLOG_HTTPS_PORT}"
+    log "HTTPS 已启用：$https_base/"
 }
 
 cmd_build() {
@@ -208,6 +322,9 @@ cmd_up() {
     [ -f "$ENV_FILE" ] || { warn ".env 不存在，先按 .env.example 生成一份"; cmd_init; }
     require_docker
     load_env
+    if [ "${SITE_HTTPS:-false}" = true ]; then
+        valid_domain "${SITE_DOMAIN:-}" || die "HTTPS 模式需要有效域名；运行 ./deploy.sh site <域名> 或 ./deploy.sh http"
+    fi
     log "构建镜像并启动服务"
     "${COMPOSE[@]}" up -d --build --remove-orphans
     wait_for_healthy
@@ -242,6 +359,10 @@ cmd_status() {
     local port="${BLOG_HTTP_PORT:-80}"
     local base="http://<服务器IP>"
     [ "$port" = "80" ] || base="http://<服务器IP>:$port"
+    if [ "${SITE_HTTPS:-false}" = true ]; then
+        base="https://${SITE_DOMAIN}"
+        [ "${BLOG_HTTPS_PORT:-443}" = 443 ] || base="$base:${BLOG_HTTPS_PORT}"
+    fi
     printf '\n访问地址：%s/   后台：%s/login\n' "$base" "$base"
 }
 
@@ -388,7 +509,11 @@ cmd_account() {
 
     log "账号已写入 $(db_name).sys_user：$username <$email>"
     local port="${BLOG_HTTP_PORT:-80}"
-    if [ "$port" = "80" ]; then
+    if [ "${SITE_HTTPS:-false}" = true ]; then
+        local https_base="https://${SITE_DOMAIN}"
+        [ "${BLOG_HTTPS_PORT:-443}" = 443 ] || https_base="$https_base:${BLOG_HTTPS_PORT}"
+        log "现在可以用它登录 $https_base/login"
+    elif [ "$port" = "80" ]; then
         log "现在可以用它登录 http://<服务器IP>/login"
     else
         log "现在可以用它登录 http://<服务器IP>:$port/login"
@@ -436,6 +561,9 @@ main() {
     shift || true
     case "$cmd" in
         init)             cmd_init "$@" ;;
+        site)             cmd_site "$@" ;;
+        https)            cmd_https "$@" ;;
+        http)             cmd_http "$@" ;;
         build)            cmd_build "$@" ;;
         up|start)         cmd_up "$@" ;;
         down|stop)        cmd_down "$@" ;;
