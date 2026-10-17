@@ -147,11 +147,6 @@ mysql_exec() {
         'exec mysql --default-character-set=utf8mb4 --user=root --password="$MYSQL_ROOT_PASSWORD" --database="$1"' _ "$database" <<<"$sql"
 }
 
-# 转义 SQL 字符串里的反斜杠和单引号
-sql_escape() {
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
-}
-
 # ---------- Flyway 相关助手 ----------
 # 迁移记录表由 Flyway 自己创建，表名固定；迁移脚本在 backend/src/main/resources/db/migration
 FLYWAY_TABLE="flyway_schema_history"
@@ -350,6 +345,7 @@ cmd_account() {
     require_docker
     load_env
     [ -f "$ROOT_DIR/sql/init_account.sh" ] || die "找不到 sql/init_account.sh"
+    source "$ROOT_DIR/sql/account_common.sh"
 
     local username="${BLOG_ACCOUNT_USERNAME:-}"
     local email="${BLOG_ACCOUNT_EMAIL:-}"
@@ -383,14 +379,12 @@ cmd_account() {
     [ -n "$hash" ] || die "生成 BCrypt 哈希失败"
 
     wait_for_mysql
-    mysql_exec "$(db_name)" "INSERT INTO sys_user (username, email, password)
-VALUES ('$(sql_escape "$username")', '$(sql_escape "$email")', '$(sql_escape "$hash")')
-ON DUPLICATE KEY UPDATE email = VALUES(email), password = VALUES(password);
-SET @owner_exists := (SELECT COUNT(*) FROM sys_user WHERE role = 'owner');
-SET @first_user_id := (SELECT MIN(id) FROM sys_user);
-UPDATE sys_user SET role = 'owner'
-WHERE @owner_exists = 0 AND @first_user_id IS NOT NULL AND id = @first_user_id;" \
-        || die "写入账号失败，确认 MySQL 已启动、后端已跑完 Flyway 迁移（./deploy.sh up 或 ./deploy.sh migrate）"
+    local write_error
+    # mysql 通过 stdin 以 batch 模式执行，遇错断连并回滚；不要添加 --force。
+    if ! write_error="$(mysql_exec "$(db_name)" "$(account_write_sql "$username" "$email" "$hash")" 2>&1)"; then
+        account_write_error "$write_error"
+        return 1
+    fi
 
     log "账号已写入 $(db_name).sys_user：$username <$email>"
     local port="${BLOG_HTTP_PORT:-80}"

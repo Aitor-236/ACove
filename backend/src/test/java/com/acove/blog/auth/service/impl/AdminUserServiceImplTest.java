@@ -1,0 +1,124 @@
+package com.acove.blog.auth.service.impl;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.sql.SQLException;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.ArgumentCaptor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
+
+import com.acove.blog.auth.dto.UserProfileDTO;
+import com.acove.blog.auth.entity.SysUser;
+import com.acove.blog.auth.mapper.SysUserMapper;
+import com.acove.blog.common.exception.BusinessException;
+
+class AdminUserServiceImplTest {
+    private SysUserMapper mapper;
+    private AdminUserServiceImpl service;
+
+    @BeforeEach
+    void setUp() {
+        mapper = mock(SysUserMapper.class);
+        service = new AdminUserServiceImpl(mapper);
+        SysUser user = new SysUser();
+        user.setId(7L);
+        user.setUsername("alice");
+        user.setEmail("alice@example.com");
+        when(mapper.selectById(7L)).thenReturn(user);
+        when(mapper.selectCount(any())).thenReturn(0L);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"email,邮箱已被占用，换一个试试", "username,用户名已被占用，换一个试试"})
+    void existingValueIsRejectedBeforeWriting(String field, String message) {
+        when(mapper.selectCount(any())).thenReturn(1L);
+
+        var error = assertThrows(BusinessException.class,
+                () -> service.updateProfile(7L, request(field)));
+
+        assertEquals(400, error.getCode());
+        assertEquals(message, error.getMessage());
+        verify(mapper, never()).updateById(any(SysUser.class));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"sys_user.uk_email,邮箱已被占用，换一个试试", "uk_email,邮箱已被占用，换一个试试",
+            "sys_user.uk_username,用户名已被占用，换一个试试", "uk_username,用户名已被占用，换一个试试"})
+    void concurrentUniqueKeyConflictBecomesBusinessError(String key, String message) {
+        when(mapper.updateById(any(SysUser.class))).thenThrow(duplicate(key, 1062));
+        UserProfileDTO request = request("email");
+        request.setUsername("new-name");
+
+        var error = assertThrows(BusinessException.class, () -> service.updateProfile(7L, request));
+
+        assertEquals(400, error.getCode());
+        assertEquals(message, error.getMessage());
+    }
+
+    @Test
+    void successfulUpdateUsesCurrentUserIdAndLeavesPasswordAndRoleUnset() {
+        service.updateProfile(7L, request("email"));
+
+        ArgumentCaptor<SysUser> update = ArgumentCaptor.forClass(SysUser.class);
+        verify(mapper).updateById(update.capture());
+        assertEquals(7L, update.getValue().getId());
+        assertEquals("new@example.com", update.getValue().getEmail());
+        assertNull(update.getValue().getPassword());
+        assertNull(update.getValue().getRole());
+    }
+
+    @Test
+    void unknownUniqueKeyIsNotMislabeledAsEmailConflict() {
+        DuplicateKeyException failure = duplicate("another_key", 1062);
+        when(mapper.updateById(any(SysUser.class))).thenThrow(failure);
+
+        assertSame(failure, assertThrows(DuplicateKeyException.class,
+                () -> service.updateProfile(7L, request("email"))));
+    }
+
+    @Test
+    void unexpectedSqlErrorCodeIsNotConverted() {
+        DuplicateKeyException failure = duplicate("sys_user.uk_email", 9999);
+        when(mapper.updateById(any(SysUser.class))).thenThrow(failure);
+
+        assertSame(failure, assertThrows(DuplicateKeyException.class,
+                () -> service.updateProfile(7L, request("email"))));
+    }
+
+    @Test
+    void otherDatabaseFailuresKeepSystemErrorPath() {
+        var failure = new DataIntegrityViolationException("unrelated database failure");
+        when(mapper.updateById(any(SysUser.class))).thenThrow(failure);
+
+        assertSame(failure, assertThrows(DataIntegrityViolationException.class,
+                () -> service.updateProfile(7L, request("email"))));
+    }
+
+    private DuplicateKeyException duplicate(String key, int code) {
+        return new DuplicateKeyException("update failed",
+                new SQLException("Duplicate entry 'new@example.com' for key '" + key + "'", "23000", code));
+    }
+
+    private UserProfileDTO request(String field) {
+        UserProfileDTO dto = new UserProfileDTO();
+        if ("email".equals(field)) {
+            dto.setEmail("new@example.com");
+        } else {
+            dto.setUsername("new-name");
+        }
+        return dto;
+    }
+}

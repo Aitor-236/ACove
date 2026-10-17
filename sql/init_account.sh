@@ -21,6 +21,8 @@
 # ============================================================
 set -euo pipefail
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/account_common.sh"
+
 DB_HOST="${BLOG_DB_HOST:-127.0.0.1}"
 DB_PORT="${BLOG_DB_PORT:-3306}"
 DB_NAME="${BLOG_DB_NAME:-blog_db}"
@@ -118,32 +120,18 @@ MSG
     exit 1
 fi
 
-# 转义 SQL 字符串里的反斜杠和单引号
-sql_escape() {
-    printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e "s/'/''/g"
-}
-
-SQL="INSERT INTO sys_user (username, email, password)
-VALUES ('$(sql_escape "$USERNAME")', '$(sql_escape "$EMAIL")', '$(sql_escape "$HASH")')
-ON DUPLICATE KEY UPDATE email = VALUES(email), password = VALUES(password);"
-
-# 还没有站长时，把最早注册的账号提升为站长（前台首页只展示这个账号）
-PROMOTE_SQL="SET @owner_exists := (SELECT COUNT(*) FROM sys_user WHERE role = 'owner');
-SET @first_user_id := (SELECT MIN(id) FROM sys_user);
-UPDATE sys_user
-SET role = 'owner'
-WHERE @owner_exists = 0
-  AND @first_user_id IS NOT NULL
-  AND id = @first_user_id;"
+SQL="$(account_write_sql "$USERNAME" "$EMAIL" "$HASH")"
 
 if [ -n "$DB_PASSWORD" ]; then
     export MYSQL_PWD="$DB_PASSWORD"
 fi
 
-mysql --default-character-set=utf8mb4 --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --database="$DB_NAME" --execute="$SQL"
-
-# 单独跑一次站长提升：老库补 role 列后也能靠这步确定站长
-mysql --default-character-set=utf8mb4 --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" --database="$DB_NAME" --execute="$PROMOTE_SQL"
+# batch 模式遇错停止并断开连接，未提交事务由 MySQL 回滚；不要添加 --force。
+if ! WRITE_ERROR="$(mysql --default-character-set=utf8mb4 --host="$DB_HOST" --port="$DB_PORT" \
+    --user="$DB_USER" --database="$DB_NAME" --batch --execute="$SQL" 2>&1)"; then
+    account_write_error "$WRITE_ERROR"
+    exit 1
+fi
 
 echo "账号已写入 $DB_NAME.sys_user：$USERNAME <$EMAIL>"
 
@@ -151,7 +139,7 @@ echo "账号已写入 $DB_NAME.sys_user：$USERNAME <$EMAIL>"
 if command -v python3 >/dev/null 2>&1 && python3 -c 'import bcrypt' >/dev/null 2>&1; then
     STORED="$(mysql --default-character-set=utf8mb4 --host="$DB_HOST" --port="$DB_PORT" --user="$DB_USER" \
         --database="$DB_NAME" --batch --skip-column-names \
-        --execute="SELECT password FROM sys_user WHERE username = '$(sql_escape "$USERNAME")';")"
+        --execute="SELECT password FROM sys_user WHERE username = $(account_sql_text "$USERNAME");")"
     BLOG_PLAIN_PW="$PASSWORD" BLOG_STORED_HASH="$STORED" python3 -c \
         'import bcrypt, os, sys; ok = bcrypt.checkpw(os.environ["BLOG_PLAIN_PW"].encode(), os.environ["BLOG_STORED_HASH"].encode()); print("密码校验：通过" if ok else "密码校验：失败"); sys.exit(0 if ok else 1)'
 fi

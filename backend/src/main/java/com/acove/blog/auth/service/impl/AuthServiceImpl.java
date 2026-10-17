@@ -1,5 +1,7 @@
 package com.acove.blog.auth.service.impl;
 
+import java.util.List;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -33,17 +35,21 @@ public class AuthServiceImpl implements AuthService {
 
         // Query user by username or email
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        SysUser user;
         if (username != null && !username.trim().isEmpty()) {
             queryWrapper.eq(SysUser::getUsername, username);
+            user = sysUserMapper.selectOne(queryWrapper);
         } else if (email != null && !email.trim().isEmpty()) {
-            queryWrapper.eq(SysUser::getEmail, email);
+            queryWrapper.eq(SysUser::getEmail, email).last("LIMIT 2");
+            List<SysUser> users = sysUserMapper.selectList(queryWrapper);
+            if (users.size() > 1) {
+                throw new BusinessException("邮箱关联多个账号，请使用用户名登录并联系管理员");
+            }
+            user = users.isEmpty() ? null : users.getFirst();
         } else {
             throw new BusinessException("请输入用户名或邮箱");
         }  
         
-        // Fetch user from database
-        SysUser user = sysUserMapper.selectOne(queryWrapper);
-
         // check password
         if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
             throw new BusinessException(401, "用户名或密码错误");

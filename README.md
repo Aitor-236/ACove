@@ -45,6 +45,8 @@ ACove/
 │       └── utils/request.ts      # axios 实例（baseURL = /api）
 ├── sql/                          # 账号脚本 + 历史存档（表结构已交给 Flyway）
 │   ├── init_account.sh           # 创建 / 重置登录账号（生成 BCrypt 哈希）
+│   ├── account_common.sh         # 两个账号入口共用的事务 SQL 与冲突提示
+│   ├── tests/                    # 隔离 MySQL 8.4 邮箱唯一性回归
 │   └── legacy/                   # Flyway 之前的建库 / 增量脚本，只读存档，不再被执行
 ├── docker-compose.yml            # 服务器部署编排：MySQL + 后端 + 前端
 ├── deploy.sh                     # 一键部署 / 运维脚本（init / up / account / backup …）
@@ -73,9 +75,25 @@ ACove/
 
 - **全新部署（Docker）**：执行 `./deploy.sh up`。MySQL 只负责建出 `blog_db` 空库，后端启动时 Flyway 建出全部表（`sys_user`、文章模块、图库、访问统计、站点设置）。
 - **本地开发**：按下面的「启动后端」配好 `application-local.yml`，然后 `./mvnw spring-boot:run`，启动过程中 Flyway 会把表建好。
-- **老库升级**：先 `./deploy.sh backup`，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
+- **老库升级**：先 `./deploy.sh backup`；本次升级到 V7 前，必须按下文检查并人工处理重复邮箱，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
 - **查看状态**：`./deploy.sh info` 打印已应用 / 未应用的迁移版本。
-- **改表结构**：当前迁移到 V6（个人简介页），新增表结构从 `V7__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
+- **改表结构**：当前迁移到 V7（邮箱唯一约束），新增表结构从 `V8__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
+
+#### V7 升级前：检查重复邮箱
+
+先备份，并暂停账号写入（停止后端、暂停账号脚本），保留 MySQL 运行。在目标库执行以下只读 SQL，列出重复组内的全部账号；分组和比较沿用邮箱列排序规则，大小写等价的邮箱也会列出：
+
+```sql
+SELECT u.email, u.id, u.username
+FROM sys_user AS u
+JOIN (SELECT email FROM sys_user GROUP BY email HAVING COUNT(*) > 1) AS duplicates
+  ON u.email = duplicates.email
+ORDER BY u.email, u.id;
+```
+
+管理员确认每个邮箱的归属，为其他冲突账号取得各自邮箱后，按账号 ID 更新 `email`，然后重复上述查询，直到没有结果。不要删除或合并账号，也不要修改 ID、密码、角色和文章归属。迁移不会自动决定归属或改写邮箱；未清理的冲突会导致 V7 创建唯一索引失败。
+
+确认无冲突后应用迁移和新版代码（Docker 使用 `./deploy.sh migrate`），用 `./deploy.sh info` 确认 V7 成功，再验证用户名及邮箱登录并恢复账号写入。若已经因重复邮箱执行失败，先清理数据并检查索引和迁移记录；仅在确认 V7 未应用后使用 Flyway `repair` 清除失败记录，再重跑迁移，不能直接修改既有迁移文件或跳过 V7。
 
 以上流程都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
 
@@ -88,9 +106,11 @@ ACove/
 ./sql/init_account.sh acove me@example.com       # 用户名和邮箱走参数，密码仍交互输入
 ```
 
-连接信息可以用环境变量覆盖：`BLOG_DB_HOST` / `BLOG_DB_PORT` / `BLOG_DB_NAME` / `BLOG_DB_USER` / `BLOG_DB_PASSWORD`；设置 `BLOG_ACCOUNT_PASSWORD` 可以跳过密码交互，方便自动化部署。用户名已存在时会更新它的邮箱和密码，也可以当重置密码用。
+连接信息可以用环境变量覆盖：`BLOG_DB_HOST` / `BLOG_DB_PORT` / `BLOG_DB_NAME` / `BLOG_DB_USER` / `BLOG_DB_PASSWORD`；设置 `BLOG_ACCOUNT_PASSWORD` 可以跳过密码交互，方便自动化部署。用户名已存在时会更新它的邮箱和密码，也可以当重置密码用。两个入口（本脚本和 `./deploy.sh account`）均要求先应用 V7，只按用户名定位账号；邮箱已属于其他用户名时拒绝写入，整个事务回滚，原账号的密码、邮箱及角色保持不变。
 
 脚本依赖 `mysql` 客户端，以及 `python3` + `bcrypt` 或 `apache2-utils`（`htpasswd`）中的任意一个。
+
+邮箱唯一性回归可运行 `python3 sql/tests/test_email_uniqueness.py`（需要 Docker Compose、本地 mysql 客户端、Python bcrypt、Java 21 和 Maven）。它创建临时 MySQL 8.4 Compose 项目，验证 Flyway 迁移、两个账号入口和并发冲突，退出时销毁测试容器及数据；不会使用现有业务库。默认使用本地缓存的 `mysql:8.4` 镜像和 Maven 离线依赖；需下载 Maven 依赖时设置 `ACOVE_QA_MAVEN_ONLINE=1`。
 
 ### 3. 启动后端
 
@@ -224,7 +244,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 
 | 表 | 说明 |
 | --- | --- |
-| `sys_user` | 登录用户：`id` / `username`（唯一）/ `email` / `password`（BCrypt）/ `avatar`（头像地址，默认空）/ `role`（owner-站长、admin-管理员、user-普通用户）/ `create_time` |
+| `sys_user` | 登录用户：`id` / `username`（唯一）/ `email`（唯一，沿用列排序规则）/ `password`（BCrypt）/ `avatar`（头像地址，默认空）/ `role`（owner-站长、admin-管理员、user-普通用户）/ `create_time` |
 | `article_category` | 文章分类：`name` / `slug`（唯一）/ `sort_order`，迁移脚本 `V1__baseline.sql` 预置前端、后端、绘画、生活四条 |
 | `tag` | 标签：`name`（唯一） |
 | `article` | 文章主表：`title` / `summary` / `content_markdown` / `status`(draft, published) / `published_at` / `reading_minutes` |

@@ -4,11 +4,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -42,6 +44,9 @@ public class AdminUserServiceImpl implements AdminUserService {
     /** 邮箱格式校验，和前端表单保持同一口径。 */
     private static final Pattern EMAIL_PATTERN =
             Pattern.compile("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+
+    private static final Pattern USER_UNIQUE_KEY =
+            Pattern.compile("for key '(?:sys_user\\.)?(uk_email|uk_username)'$");
 
     private final SysUserMapper sysUserMapper;
 
@@ -84,7 +89,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             if (!EMAIL_PATTERN.matcher(email).matches()) {
                 throw new BusinessException("邮箱格式不正确");
             }
-            // 登录支持邮箱登录，selectOne 遇到重复邮箱会报错，所以这里先挡住
+            // 提前给出业务提示；并发写入由数据库唯一约束兜底。
             if (existsByEmail(email, existing.getId())) {
                 throw new BusinessException("邮箱已被占用，换一个试试");
             }
@@ -92,7 +97,19 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
 
         if (update.getUsername() != null || update.getEmail() != null) {
-            sysUserMapper.updateById(update);
+            try {
+                sysUserMapper.updateById(update);
+            } catch (DuplicateKeyException ex) {
+                // 只转换 sys_user 的已知唯一键冲突，其他数据库错误保留系统异常路径。
+                if (ex.getMostSpecificCause() instanceof SQLException sql && sql.getErrorCode() == 1062) {
+                    var key = USER_UNIQUE_KEY.matcher(String.valueOf(sql.getMessage()));
+                    if (key.find()) {
+                        throw new BusinessException("uk_email".equals(key.group(1))
+                                ? "邮箱已被占用，换一个试试" : "用户名已被占用，换一个试试");
+                    }
+                }
+                throw ex;
+            }
         }
 
         return getProfile(existing.getId());
