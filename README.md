@@ -161,7 +161,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
 | GET | `/site/settings` | 前台站点设置：网站名、首页头图、首页中间的文字（匿名可访问） |
-| GET | `/site/profile-page` | 匿名读取个人简介页当前模式、Markdown 正文或已发布 HTML 文档地址 |
+| GET | `/site/profile-page` | 匿名读取个人简介页当前模式、Markdown 正文（Markdown 模式下附站长邮箱）或已发布 HTML 文档地址 |
 | GET | `/site/profile-page/html/{bundleId}` | 匿名读取当前已发布 HTML 文档；响应附 CSP sandbox 策略，候选包和已替换资源包不可通过此接口读取 |
 | GET | `/todo/list` | Todo 清单（前台只读）：一次性返回全部，置顶那条最先，其余按创建时间新 → 旧 |
 | GET | `/project/list` | 开源项目（前台只读）：一次性返回全部，按创建时间新 → 旧；每条带名字 / 地址 / 介绍 / 日志 / 下一步 |
@@ -427,7 +427,7 @@ docker compose exec -T mysql sh -c \
 
 ## 说明与待办
 
-- 图库（`/gallery`）已由后端驱动：公开列表和详情来自 `/gallery/list`、`/gallery/detail/{id}`，后台「内容管理 → 图库管理」（`/admin/galleries`）维护图库、上传图片和排序。上传文件保存在 `blog.upload.dir/gallery/`，部署时要持久化上传目录。个人简介页后端接口由 V6 的 `site_profile_page` 和 `site_profile_html_bundle` 保存；静态资源在 `blog.upload.dir/profile-page/`。Markdown 和导入 HTML 单页的管理接口仅站长账号（`role=owner`）可用，访客通过 `/site/profile-page` 读取；`/about` 前端接入编辑功能尚待完成。开源项目页（`/projects`）由 `open_source_project` 表驱动，后台「开源项目 → 项目列表」维护。
+- 图库（`/gallery`）已由后端驱动：公开列表和详情来自 `/gallery/list`、`/gallery/detail/{id}`，后台「内容管理 → 图库管理」（`/admin/galleries`）维护图库、上传图片和排序。上传文件保存在 `blog.upload.dir/gallery/`，部署时要持久化上传目录。个人简介页由 V6 的 `site_profile_page` 和 `site_profile_html_bundle` 保存；静态资源在 `blog.upload.dir/profile-page/`。站长可在后台「个人管理 → 个人简介」（`/admin/profile-page`）编辑 Markdown 或导入受限的单页 HTML ZIP，保存后立即公开；访客通过 `/about` 查看。开源项目页（`/projects`）由 `open_source_project` 表驱动，后台「开源项目 → 项目列表」维护。
 - 首页动态列表由后台「内容管理 → 首页展示」维护（表 `home_article`）：挑中的已发布文章按拖拽顺序展示，数量不限；一篇都没挑时回退到最近三篇已发布文章。选择里会保留被取消发布的文章（前台自动隐藏），重新发布后回到原来的位置。
 - 开源项目的预览图（`preview_image` 列）**暂时留空、不启用**：表里先建好列，前台和后台都还没给它留位置，等后期做预览图上传时再补 UI。
 - `sys_user.role` 决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。个人简介页后台接口额外要求角色值严格等于 `owner`；其他后台功能仍按各自现有登录校验处理。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。

@@ -10,4 +10,7 @@ public interface SiteProfileService {
      * 同优先级取 id 最小的（最早注册的那个）。
      */
     SiteOwnerVO getSiteOwner();
+
+    /** Email for the Markdown introduction page only; not exposed by the general owner endpoint. */
+    String getSiteOwnerEmail();
 }

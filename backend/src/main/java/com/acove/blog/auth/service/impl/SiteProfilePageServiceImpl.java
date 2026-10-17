@@ -31,6 +31,7 @@ import com.acove.blog.auth.mapper.SiteProfileHtmlBundleMapper;
 import com.acove.blog.auth.mapper.SiteProfilePageMapper;
 import com.acove.blog.auth.mapper.SysUserMapper;
 import com.acove.blog.auth.service.SiteProfilePageService;
+import com.acove.blog.auth.service.SiteProfileService;
 import com.acove.blog.auth.support.ProfilePageHtmlPackageValidator;
 import com.acove.blog.common.exception.BusinessException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -54,6 +55,7 @@ public class SiteProfilePageServiceImpl implements SiteProfilePageService {
     private final SiteProfilePageMapper pageMapper;
     private final SiteProfileHtmlBundleMapper bundleMapper;
     private final SysUserMapper sysUserMapper;
+    private final SiteProfileService siteProfileService;
     private final ProfilePageHtmlPackageValidator htmlPackageValidator;
 
     @Value("${blog.upload.dir:./uploads}")
@@ -75,7 +77,15 @@ public class SiteProfilePageServiceImpl implements SiteProfilePageService {
             mode = MODE_MARKDOWN;
         }
         String publicMarkdown = MODE_MARKDOWN.equals(mode) ? nullToEmpty(page.getMarkdownContent()) : "";
-        return new SiteProfilePageVO(mode, publicMarkdown, htmlUrl);
+        String contactEmail = "";
+        if (MODE_MARKDOWN.equals(mode)) {
+            try {
+                contactEmail = siteProfileService.getSiteOwnerEmail();
+            } catch (BusinessException ex) {
+                if (ex.getCode() != 404) throw ex;
+            }
+        }
+        return new SiteProfilePageVO(mode, publicMarkdown, htmlUrl, contactEmail);
     }
 
     @Override

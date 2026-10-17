@@ -14,7 +14,7 @@ import {
   Picture,
   Setting,
   TrendCharts,
-  User
+  User,
 } from '@element-plus/icons-vue'
 import '@/styles/admin.css'
 import request from '@/utils/request'
@@ -24,6 +24,7 @@ interface ProfileInfo {
   id: number
   username: string
   email: string
+  role: string
   /** 头像相对地址，空字符串表示还没设置过头像 */
   avatar: string
 }
@@ -34,6 +35,7 @@ interface NavItem {
   icon: Component
   to?: string
   disabled?: boolean
+  ownerOnly?: boolean
 }
 
 interface NavGroup {
@@ -54,29 +56,32 @@ const navGroups: NavGroup[] = [
       { label: '首页展示', icon: House, to: '/admin/home-articles' },
       { label: '分类管理', icon: Folder, to: '/admin/categories' },
       { label: '标签管理', icon: CollectionTag, to: '/admin/tags' },
-      { label: '图库管理', icon: Picture, to: '/admin/galleries' }
-    ]
+      { label: '图库管理', icon: Picture, to: '/admin/galleries' },
+    ],
   },
   {
     title: '待办事项',
-    items: [{ label: '待办清单', icon: List, to: '/admin/todos' }]
+    items: [{ label: '待办清单', icon: List, to: '/admin/todos' }],
   },
   {
     title: '开源项目',
-    items: [{ label: '项目列表', icon: Collection, to: '/admin/projects' }]
+    items: [{ label: '项目列表', icon: Collection, to: '/admin/projects' }],
   },
   {
     title: '个人管理',
-    items: [{ label: '个人资料', icon: User, to: '/admin/profile' }]
+    items: [
+      { label: '个人资料', icon: User, to: '/admin/profile' },
+      { label: '个人简介', icon: EditPen, to: '/admin/profile-page', ownerOnly: true },
+    ],
   },
   {
     title: '站点设置',
-    items: [{ label: '网站设置', icon: Setting, to: '/admin/site' }]
+    items: [{ label: '网站设置', icon: Setting, to: '/admin/site' }],
   },
   {
     title: '站点数据',
-    items: [{ label: '访问统计', icon: TrendCharts, to: '/admin/visits' }]
-  }
+    items: [{ label: '访问统计', icon: TrendCharts, to: '/admin/visits' }],
+  },
 ]
 
 const route = useRoute()
@@ -89,6 +94,15 @@ const sidebarRef = ref<HTMLElement | null>(null)
 /** 先用 localStorage 里的值渲染，进页面后再用接口返回的资料刷新 */
 const username = ref(localStorage.getItem('username') || '管理员')
 const avatar = ref('')
+const isOwner = ref(false)
+const visibleNavGroups = computed(() =>
+  navGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => !item.ownerOnly || isOwner.value),
+    }))
+    .filter((group) => group.items.length > 0),
+)
 const avatarText = computed(() => username.value.trim().charAt(0).toUpperCase() || 'A')
 const avatarUrl = computed(() => (avatar.value ? `/api${avatar.value}` : ''))
 
@@ -101,6 +115,7 @@ async function loadAccount() {
     const res = (await request.get('/admin/user/profile')) as { data: ProfileInfo }
     username.value = res.data.username || username.value
     avatar.value = res.data.avatar || ''
+    isOwner.value = res.data.role === 'owner'
     localStorage.setItem('username', res.data.username)
     if (res.data.email) {
       localStorage.setItem('email', res.data.email)
@@ -152,7 +167,7 @@ function isActive(item: NavItem) {
 
 /** 窄屏下拉按钮上显示的「当前页面」，找不到匹配项就退回兜底文案 */
 const currentNav = computed(() => {
-  for (const group of navGroups) {
+  for (const group of visibleNavGroups.value) {
     const active = group.items.find((item) => isActive(item))
     if (active) return active
   }
@@ -185,7 +200,7 @@ async function handleLogout() {
     await ElMessageBox.confirm('退出后需要重新登录才能进入后台，确定退出吗？', '退出登录', {
       confirmButtonText: '退出',
       cancelButtonText: '取消',
-      type: 'warning'
+      type: 'warning',
     })
   } catch {
     // 用户点了取消
@@ -230,7 +245,7 @@ async function handleLogout() {
 
       <div id="admin-nav-panel" class="nav-panel" :class="{ 'is-open': mobileNavOpen }">
         <nav class="admin-nav" aria-label="后台导航">
-          <div v-for="group in navGroups" :key="group.title" class="nav-group">
+          <div v-for="group in visibleNavGroups" :key="group.title" class="nav-group">
             <p class="nav-group-title">{{ group.title }}</p>
 
             <template v-for="item in group.items" :key="item.label">

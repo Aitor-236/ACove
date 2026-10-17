@@ -27,6 +27,18 @@ public class SiteProfileServiceImpl implements SiteProfileService {
 
     @Override
     public SiteOwnerVO getSiteOwner() {
+        SysUser owner = findSiteOwner();
+        String avatar = owner.getAvatar() == null ? "" : owner.getAvatar();
+        return new SiteOwnerVO(owner.getUsername(), avatar);
+    }
+
+    @Override
+    public String getSiteOwnerEmail() {
+        String email = findSiteOwner().getEmail();
+        return email == null ? "" : email;
+    }
+
+    private SysUser findSiteOwner() {
         // 按 id 升序取出，再挑优先级最高的；同优先级时保留先遍历到的，也就是最早注册的那个
         List<SysUser> users = sysUserMapper.selectList(
                 new LambdaQueryWrapper<SysUser>().orderByAsc(SysUser::getId));
@@ -43,9 +55,7 @@ public class SiteProfileServiceImpl implements SiteProfileService {
                 bestPriority = priority;
             }
         }
-
-        String avatar = owner.getAvatar() == null ? "" : owner.getAvatar();
-        return new SiteOwnerVO(owner.getUsername(), avatar);
+        return owner;
     }
 
     private int rolePriority(String role) {

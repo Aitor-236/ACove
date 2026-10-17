@@ -14,4 +14,7 @@ public class SiteProfilePageVO {
 
     /** HTML文档专用安全展示接口；Markdown模式时为空。 */
     private String htmlUrl;
+
+    /** 仅Markdown模式返回的站长联系邮箱；HTML模式不公开此字段内容。 */
+    private String contactEmail;
 }

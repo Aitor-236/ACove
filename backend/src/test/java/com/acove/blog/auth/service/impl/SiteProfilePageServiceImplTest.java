@@ -38,7 +38,11 @@ class SiteProfilePageServiceImplTest {
         bundleMapper = mock(SiteProfileHtmlBundleMapper.class);
         sysUserMapper = mock(SysUserMapper.class);
         service = new SiteProfilePageServiceImpl(
-                pageMapper, bundleMapper, sysUserMapper, new ProfilePageHtmlPackageValidator());
+                pageMapper,
+                bundleMapper,
+                sysUserMapper,
+                new SiteProfileServiceImpl(sysUserMapper),
+                new ProfilePageHtmlPackageValidator());
     }
 
     @Test
@@ -80,6 +84,18 @@ class SiteProfilePageServiceImplTest {
         assertEquals("html", result.getMode());
         assertEquals("", result.getMarkdownContent());
         assertEquals("/site/profile-page/html/" + bundleId, result.getHtmlUrl());
+    }
+
+    @Test
+    void getPublicPage_keepsMarkdownAvailableBeforeAnOwnerAccountIsCreated() {
+        when(pageMapper.selectById(1)).thenReturn(page("markdown", "public markdown", null));
+        when(sysUserMapper.selectList(any())).thenReturn(List.of());
+
+        SiteProfilePageVO result = service.getPublicPage();
+
+        assertEquals("markdown", result.getMode());
+        assertEquals("public markdown", result.getMarkdownContent());
+        assertEquals("", result.getContactEmail());
     }
 
     @Test
