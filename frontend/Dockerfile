@@ -30,10 +30,10 @@ FROM nginx:alpine AS runtime
 RUN rm -f /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh \
     && sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|' /etc/apk/repositories
 
-# 站点配置模板（SPA history 回退 + /api 反向代理）：
-# 放进 nginx 镜像的 templates 目录，entrypoint 启动时用 envsubst 把 ${SITE_DOMAIN}
-# 替换后生成 /etc/nginx/conf.d/default.conf，所以换域名只要改 .env 的 SITE_DOMAIN。
-COPY nginx.conf.template /etc/nginx/templates/default.conf.template
+# 启动时先选 HTTP/HTTPS 模板，再由官方 entrypoint 展开 SITE_DOMAIN。
+COPY nginx.conf.template nginx.https.conf.template /etc/nginx/site-templates/
+COPY docker-entrypoint-select-site.sh /docker-entrypoint.d/15-select-site.sh
+RUN chmod +x /docker-entrypoint.d/15-select-site.sh
 COPY --from=builder /build/dist /usr/share/nginx/html
 
 EXPOSE 80

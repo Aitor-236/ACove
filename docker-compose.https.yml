@@ -1,0 +1,7 @@
+# 仅在 SITE_HTTPS=true 时由 deploy.sh 加载；直接用 Compose 时需显式加 -f。
+services:
+  frontend:
+    ports:
+      - "${BLOG_HTTPS_PORT:-443}:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
