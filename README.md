@@ -37,6 +37,7 @@ ACove/
 ├── frontend/                     # Vue 3 前端
 │   ├── Dockerfile                # 多阶段构建：Node 构建 → Nginx 托管
 │   ├── nginx.conf.template       # SPA 回退 + /api 反代（域名走 .env 的 SITE_DOMAIN）
+│   ├── nginx.host.conf.example   # 无 Docker 时主机 Nginx 的配置示例
 │   └── src/
 │       ├── views/                # 前台页面：Home / Articles / ArticleDetail / Gallery / GalleryDetail / Projects / About / Login
 │       ├── views/admin/          # 后台页面：文章、分类、标签、图库、待办清单、开源项目、个人管理、网站设置、访问统计 + AdminLayout
@@ -162,7 +163,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `jwt.expire-time` | 同上 | token 有效期（毫秒），模板默认 24 小时 |
 | `server.port` | `backend/src/main/resources/application.yml` | 后端端口，默认 8080 |
 | `blog.upload.dir` | 同上 | 上传文件（头像、正文配图、首页头图、图库图片）的落盘目录，默认 `./uploads`；图库图片存入 `gallery/` 子目录；容器里是 `/app/uploads`（数据卷） |
-| `/api` 代理目标 | `frontend/vite.config.ts`（开发）、`frontend/nginx.conf.template`（生产） | 后端地址，默认 `http://localhost:8080` / `http://backend:8080` |
+| `/api` 代理目标 | `frontend/vite.config.ts`（开发）、`frontend/nginx.conf.template`（Docker）、`frontend/nginx.host.conf.example`（主机） | 后端地址分别为 `http://localhost:8080`、`http://backend:8080`、`http://127.0.0.1:8080` |
 | `MYSQL_ROOT_PASSWORD`、`BLOG_JWT_SECRET`、`BLOG_HTTP_PORT` 等 | 仓库根 `.env`（模板 `.env.example`） | 只影响 Docker 部署，`./deploy.sh init` 会自动填入随机密钥 |
 
 ## 接口一览
@@ -439,11 +440,10 @@ docker compose exec -T mysql sh -c \
 
 ### 不用 Docker 的手动部署
 
-1. 前端 `npm run build`，把 `frontend/dist/` 交给 Nginx 托管；后端 `./mvnw clean package` 得到可执行 jar，用 `java -jar` 运行。
-2. 生产环境要把 `/api` 反代到后端并去掉 `/api` 前缀（可直接参考 `frontend/nginx.conf.template`），否则前端请求会全部 404。
-3. `jwt.secret-key`、MySQL 密码不要沿用开发环境的值，`application-local.yml` 也不建议打进镜像（`backend/.dockerignore` 已排除）。
-4. 前端是 history 模式的 SPA，Nginx 需要配置回退（找不到文件时返回 `index.html`），否则直接刷新 `/articles/1` 这类地址会 404。
-5. 上传目录要可写并持久化，否则图片会在重装服务后丢失。
+1. 前端在 `frontend/` 运行 `npm run build`，把 `dist/` 的内容发布到主机目录（示例使用 `/var/www/acove`）；后端在 `backend/` 运行 `./mvnw clean package`，用 `java -jar` 运行生成的 jar。让后端监听 `127.0.0.1:8080`，或按实际监听地址修改下面的反代目标。
+2. 使用 [主机 Nginx 配置示例](frontend/nginx.host.conf.example)，将 `example.com`、`www.example.com` 和 `root` 改为实际域名与前端发布目录，再放入主机 Nginx 的站点配置目录。示例把 `/api/` 反代到 `127.0.0.1:8080`，并去掉 `/api/` 前缀；它不依赖 Docker 的 `backend` 主机名或 `127.0.0.11` DNS。执行 `sudo nginx -t` 检查配置后重载 Nginx。
+3. 示例先监听 HTTP 80，确认域名已指向服务器且站点能访问后，可在主机上通过 Certbot 的 Nginx 集成签发证书并启用 HTTPS。不要使用上面 Docker 部署的证书挂载与容器重载钩子。
+4. 生产环境设置独立的 `jwt.secret-key` 和 MySQL 密码。前端使用 history 模式，示例已配置找不到文件时回退到 `index.html`；上传目录也要可写并持久化，建议把 `blog.upload.dir` 设为主机上的固定绝对路径。
 
 ## 说明与待办
 
