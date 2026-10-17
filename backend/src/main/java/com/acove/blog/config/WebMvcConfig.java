@@ -32,6 +32,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 "/tag/list",                   // public tag list（前台标签面板）
                 "/site/owner",                 // public site owner profile
                 "/site/settings",              // public site settings（网站名 / 首页头图 / 首页文字）
+                "/site/profile-page",          // public personal introduction content
+                "/site/profile-page/html/**",  // public, sandboxed active HTML document
                 "/todo/list",                  // 前台 Todo 清单（只读；写操作都在 /admin/todo/** 下）
                 "/project/list",               // 前台开源项目列表（只读；写操作都在 /admin/project/** 下）
                 "/gallery/list",               // 前台图库列表（只读；写操作都在 /admin/gallery/** 下）

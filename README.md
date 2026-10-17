@@ -75,7 +75,7 @@ ACove/
 - **本地开发**：按下面的「启动后端」配好 `application-local.yml`，然后 `./mvnw spring-boot:run`，启动过程中 Flyway 会把表建好。
 - **老库升级**：先 `./deploy.sh backup`，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
 - **查看状态**：`./deploy.sh info` 打印已应用 / 未应用的迁移版本。
-- **改表结构**：当前迁移到 V5（图库），新增表结构从 `V6__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
+- **改表结构**：当前迁移到 V6（个人简介页），新增表结构从 `V7__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
 
 以上流程都**不会预置任何账号**，所以下一步必须创建你自己的登录账号。
 
@@ -161,12 +161,14 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
 | GET | `/site/settings` | 前台站点设置：网站名、首页头图、首页中间的文字（匿名可访问） |
+| GET | `/site/profile-page` | 匿名读取个人简介页当前模式、Markdown 正文或已发布 HTML 文档地址 |
+| GET | `/site/profile-page/html/{bundleId}` | 匿名读取当前已发布 HTML 文档；响应附 CSP sandbox 策略，候选包和已替换资源包不可通过此接口读取 |
 | GET | `/todo/list` | Todo 清单（前台只读）：一次性返回全部，置顶那条最先，其余按创建时间新 → 旧 |
 | GET | `/project/list` | 开源项目（前台只读）：一次性返回全部，按创建时间新 → 旧；每条带名字 / 地址 / 介绍 / 日志 / 下一步 |
 | GET | `/gallery/list` | 图库列表：返回图库名称、简介、封面地址和图片数量；封面取排序第一张，空图库封面为空 |
 | GET | `/gallery/detail/{id}` | 图库详情：返回图库信息和按自定义顺序排列的图片 |
 | POST | `/visit/report` | 前台页面浏览上报，每次切换页面调一次；访客标识由服务端 Cookie（`blog_vid`）维护，前端不用传参 |
-| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、首页头图 `/uploads/hero/`、图库图片 `/uploads/gallery/`），由后端直接托管；`<img>` 请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
+| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、首页头图 `/uploads/hero/`、图库图片 `/uploads/gallery/`、个人简介页资源 `/uploads/profile-page/`），由后端直接托管；`<img>` 请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
 
 后台接口（需要 `Authorization: Bearer <token>`）：
 
@@ -184,12 +186,16 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/home-article/save` | 整体覆盖首页展示选择，body 传 `articleIds` 数组（顺序即首页顺序），空数组表示清空 |
 | GET / POST | `/admin/category/list`、`/create`、`/update`、`/delete` | 分类管理 |
 | GET / POST | `/admin/tag/list`、`/create`、`/update`、`/delete` | 标签管理 |
-| GET | `/admin/user/profile` | 个人管理：当前登录用户的用户名 / 邮箱 / 头像 |
+| GET | `/admin/user/profile` | 个人管理：当前登录用户的用户名 / 邮箱 / 头像 / 角色 `role` |
 | POST | `/admin/user/profile/update` | 修改用户名或邮箱，只更新传入的字段，重名或格式错误返回 400 |
 | POST | `/admin/user/avatar` | 上传头像（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | GET | `/admin/site/settings` | 网站设置：读取网站名 / 首页头图 / 首页中间的文字 |
 | POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图 |
 | POST | `/admin/site/hero-image` | 上传首页头图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
+| GET | `/admin/profile-page` | 读取个人简介页配置；仅 `role=owner` 可访问 |
+| POST | `/admin/profile-page/html-package` | 上传并校验单页 HTML ZIP（multipart 字段 `file`，≤ 5MB，解压后 ≤ 20MB、最多 100 个文件）；成功后返回候选包 ID 和 `previewApiUrl`，尚未公开 |
+| GET | `/admin/profile-page/html-preview/{bundleId}` | 读取候选 HTML 供站长在 sandbox iframe 的 `srcdoc` 预览；仅 `role=owner` 可访问 |
+| POST | `/admin/profile-page/save` | 保存并立即公开；body 包含 `mode`（`markdown` / `html`）、`markdownContent`、`htmlBundleId`；切换模式会保留另一模式已保存内容，仅 `role=owner` 可访问 |
 | POST | `/admin/upload/image` | 上传正文配图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif），返回 `url` 供编辑器写进 Markdown |
 | GET | `/admin/visit/overview` | 访问统计概览：今日 / 昨日的 PV、UV，以及绝对增量与增幅百分比（昨日为 0 时增幅返回 `null`） |
 | GET | `/admin/visit/trend` | 最近若干天的每日 PV / UV，`days` 默认 30、上限 90，按日期升序返回（没有数据的日子补 0） |
@@ -231,8 +237,10 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `home_article` | 首页展示文章：`article_id`（主键，关联 `article.id`，级联删除）/ `sort_order`（越小越靠前）/ `created_at`；后台「首页展示」页维护，前台 `GET /article/home` 按它排序（迁移脚本 `V4__create_home_article.sql`） |
 | `gallery_album` | 图库：`name` / `description` / `created_at` / `updated_at`（迁移脚本 `V5__create_gallery.sql`）；封面不单独存储，由图片排序中的第一张派生 |
 | `gallery_image` | 图库图片：`gallery_id` / `image_url` / `original_name` / `sort_order` / `created_at`；图库删除时外键级联删除图片记录，应用同时清理图片文件（迁移脚本 `V5__create_gallery.sql`） |
+| `site_profile_page` | 站长个人简介页单行配置（主键固定为 1）：当前模式 `active_mode`、始终保留的 Markdown 正文 `markdown_content`、已保存 HTML 资源包 `html_bundle_id`、`updated_at`（迁移脚本 `V6__create_site_profile_page.sql`） |
+| `site_profile_html_bundle` | 个人简介静态 HTML 资源包：校验后的单页 `html_content`、上传资源相对目录 `asset_path`、`status`（staged / active）、`created_at`；HTML 不直接放在静态文件目录里，资源目录在站点切换时清理（迁移脚本 `V6__create_site_profile_page.sql`） |
 
-外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`。
+外键约束：`article.author_id → sys_user.id`、`article.category_id → article_category.id` 都是 `ON DELETE RESTRICT`（分类下还有文章就删不掉）；`article_tag` 的两条外键是 `ON DELETE CASCADE`；`site_profile_page.html_bundle_id → site_profile_html_bundle.id` 为 `ON DELETE SET NULL`。
 
 ## 常用命令
 
@@ -419,13 +427,13 @@ docker compose exec -T mysql sh -c \
 
 ## 说明与待办
 
-- 图库（`/gallery`）已由后端驱动：公开列表和详情来自 `/gallery/list`、`/gallery/detail/{id}`，后台「内容管理 → 图库管理」（`/admin/galleries`）维护图库、上传图片和排序。上传文件保存在 `blog.upload.dir/gallery/`，部署时要持久化上传目录。个人简介页（`/about`）仍是页面内静态内容。开源项目页（`/projects`）由 `open_source_project` 表驱动，后台「开源项目 → 项目列表」维护。
+- 图库（`/gallery`）已由后端驱动：公开列表和详情来自 `/gallery/list`、`/gallery/detail/{id}`，后台「内容管理 → 图库管理」（`/admin/galleries`）维护图库、上传图片和排序。上传文件保存在 `blog.upload.dir/gallery/`，部署时要持久化上传目录。个人简介页后端接口由 V6 的 `site_profile_page` 和 `site_profile_html_bundle` 保存；静态资源在 `blog.upload.dir/profile-page/`。Markdown 和导入 HTML 单页的管理接口仅站长账号（`role=owner`）可用，访客通过 `/site/profile-page` 读取；`/about` 前端接入编辑功能尚待完成。开源项目页（`/projects`）由 `open_source_project` 表驱动，后台「开源项目 → 项目列表」维护。
 - 首页动态列表由后台「内容管理 → 首页展示」维护（表 `home_article`）：挑中的已发布文章按拖拽顺序展示，数量不限；一篇都没挑时回退到最近三篇已发布文章。选择里会保留被取消发布的文章（前台自动隐藏），重新发布后回到原来的位置。
 - 开源项目的预览图（`preview_image` 列）**暂时留空、不启用**：表里先建好列，前台和后台都还没给它留位置，等后期做预览图上传时再补 UI。
-- `sys_user.role` 目前只用来决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。权限还没做，后台接口仍然只校验"是否登录"，任何登录用户都能进后台。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
+- `sys_user.role` 决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。个人简介页后台接口额外要求角色值严格等于 `owner`；其他后台功能仍按各自现有登录校验处理。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
-- 头像、正文配图、首页头图和图库图片都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/hero/` 和 `backend/uploads/gallery/`，已加入 `.gitignore`），数据库只存 `/uploads/xxx/yyy.png` 这样的相对地址：头像、头图和图库图片由前端加 `/api` 前缀访问，正文里的图片由 `frontend/src/utils/markdown.ts` 在渲染时补上 `/api` 前缀；部署时该目录要可写并且要持久化，否则图片会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
-- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表；后续改表从 `V6__xxx.sql` 开始。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- 头像、正文配图、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表；后续改表从 `V7__xxx.sql` 开始。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
 - 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。

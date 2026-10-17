@@ -192,6 +192,6 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private UserProfileVO toProfileVO(SysUser user) {
         String avatar = user.getAvatar() == null ? "" : user.getAvatar();
-        return new UserProfileVO(user.getId(), user.getUsername(), user.getEmail(), avatar);
+        return new UserProfileVO(user.getId(), user.getUsername(), user.getEmail(), user.getRole(), avatar);
     }
 }
