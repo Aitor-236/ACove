@@ -47,7 +47,7 @@ onBeforeUnmount(() => {
 <style>
 @font-face {
   font-family: 'Maple Mono CN';
-  src: url('/fonts/maple-mono-cn/MapleMono-CN-Regular.ttf') format('truetype');
+  src: url('./assets/fonts/MapleMono-CN-Regular-GB2312.woff2') format('woff2');
   font-style: normal;
   font-weight: 400;
   font-display: swap;
