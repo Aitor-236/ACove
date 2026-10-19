@@ -96,7 +96,7 @@ const acoveSourceTheme = EditorView.theme({
   },
   '&.cm-focused': { outline: 'none' },
   '.cm-scroller': {
-    fontFamily: "'JetBrains Mono', Consolas, Monaco, monospace",
+    fontFamily: "'Maple Mono CN', Consolas, Monaco, monospace",
     lineHeight: '1.7'
   },
   '.cm-content': { padding: '14px 16px', caretColor: 'var(--accent-brown)' },

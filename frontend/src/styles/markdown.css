@@ -92,7 +92,7 @@
 .markdown-body code {
   padding: 2px 6px;
   border-radius: var(--radius-control, 4px);
-  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-family: 'Maple Mono CN', Consolas, Monaco, monospace;
   font-size: var(--markdown-font-size, 14px);
   background: rgba(var(--accent-brown-rgb), 0.12);
 }
@@ -133,7 +133,7 @@
   left: var(--code-label-left, 20px);
   z-index: 1;
   color: var(--code-muted, rgba(246, 241, 231, 0.6));
-  font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
+  font-family: 'Maple Mono CN', Consolas, Monaco, monospace;
   font-size: 12px;
   letter-spacing: 0.06em;
   user-select: none;

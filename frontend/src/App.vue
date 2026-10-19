@@ -45,8 +45,27 @@ onBeforeUnmount(() => {
 </template>
 
 <style>
+@font-face {
+  font-family: 'Maple Mono CN';
+  src: url('/fonts/maple-mono-cn/MapleMono-CN-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   /* 浅色米白 + 棕色：整体主题变量，前台页面统一复用 */
+  --font-family-ui:
+    'Maple Mono CN',
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+  --el-font-family: var(--font-family-ui);
   --bg-cream: #f6f1e7;
   --accent-brown: #9b6846;
   --accent-brown-rgb: 155, 104, 70;
@@ -108,15 +127,7 @@ body,
 body {
   margin: 0;
   color: var(--text-strong);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    'PingFang SC',
-    'Hiragino Sans GB',
-    'Microsoft YaHei',
-    sans-serif;
+  font-family: var(--font-family-ui);
   -webkit-font-smoothing: antialiased;
   background: var(--bg-cream);
 }

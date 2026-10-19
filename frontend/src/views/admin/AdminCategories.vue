@@ -304,7 +304,7 @@ onMounted(loadCategories)
   padding: 2px 8px;
   color: var(--text-body);
   font-size: 12px;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-family: 'Maple Mono CN', Consolas, 'Liberation Mono', Menlo, monospace;
   background: transparent;
 }
 
