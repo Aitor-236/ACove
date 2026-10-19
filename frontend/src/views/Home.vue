@@ -211,9 +211,9 @@ onBeforeRouteLeave(() => {
 
     <!-- 下 3/5：左侧工具栏 + 右侧主体内容 -->
     <div class="home-body">
-      <!-- 工具栏：每块小组件各自成一个框，目前先放头像/名字/数据一块 -->
+      <!-- 资料区：头像、名字和数量通过留白与分隔线组织。 -->
       <aside class="tool-panel" aria-label="工具栏">
-        <section class="widget-card surface-panel profile-card">
+        <section class="widget-card profile-card">
           <img class="profile-avatar" :src="ownerAvatarUrl" :alt="`${ownerName} 的头像`" />
           <p class="profile-name">{{ ownerName }}</p>
           <dl class="profile-stats">
@@ -262,9 +262,9 @@ onBeforeRouteLeave(() => {
         </div>
       </main>
 
-      <!-- 待办清单：主页右侧的功能卡片，和左栏的详细信息卡片同一套框样式 -->
+      <!-- 待办清单：按标题与状态分组，不额外套框。 -->
       <aside class="todo-panel" aria-label="待办清单">
-        <section class="surface-panel todo-card">
+        <section class="todo-card">
           <header class="todo-head">
             <h2>待办</h2>
             <span class="todo-total">{{ visibleTodoTotal ? `共 ${visibleTodoTotal} 条` : '' }}</span>
@@ -381,7 +381,7 @@ onBeforeRouteLeave(() => {
 .profile-avatar {
   width: 96px;
   height: 96px;
-  border: 1px solid var(--panel-border, rgba(138, 90, 59, 0.14));
+  border: 1px solid var(--panel-border, rgba(var(--accent-brown-rgb), 0.14));
   border-radius: 50%;
   background: #f2e8d6;
   object-fit: cover;
@@ -401,7 +401,7 @@ onBeforeRouteLeave(() => {
   width: 100%;
   margin: 18px 0 0;
   padding-top: 16px;
-  border-top: 1px solid rgba(138, 90, 59, 0.14);
+  border-top: 1px solid rgba(var(--accent-brown-rgb), 0.14);
 }
 
 .profile-stat {
@@ -431,7 +431,7 @@ onBeforeRouteLeave(() => {
   min-width: 0;
 }
 
-/* 右侧待办卡片：和左栏详情卡一样，一整块就是一个框 */
+/* 辅助信息通过标题和分隔线分组，不另套卡片。 */
 .todo-panel {
   grid-area: todo;
   display: flex;
@@ -450,7 +450,7 @@ onBeforeRouteLeave(() => {
   gap: 10px;
   margin-bottom: 16px;
   padding-bottom: 14px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.14);
+  border-bottom: 1px solid rgba(var(--accent-brown-rgb), 0.14);
 }
 
 .todo-head h2 {
@@ -498,7 +498,7 @@ onBeforeRouteLeave(() => {
 }
 
 .status-dot.is-doing {
-  background: var(--status-doing, #8a5a3b);
+  background: var(--status-doing, #9b6846);
 }
 
 .status-dot.is-done {
@@ -540,10 +540,8 @@ onBeforeRouteLeave(() => {
 .todo-pin {
   flex: 0 0 auto;
   padding: 2px 8px;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 11px;
-  background: #ecdec5;
 }
 
 .todo-state {
@@ -562,37 +560,38 @@ onBeforeRouteLeave(() => {
   font-size: 13px;
 }
 
-/* 每条动态单独一个框，底色/描边与左侧工具栏框完全一致 */
+/* 动态按条目排版，通过相邻条目之间的细线分隔。 */
 .feed-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 
 .feed-item {
   display: flex;
   flex-direction: column;
   padding: 20px 22px;
-  border: 1px solid var(--panel-border, rgba(138, 90, 59, 0.14));
-  border-radius: 20px;
-  background: var(--panel-bg, #fffdf9);
-  transition:
-    border-color 0.25s ease,
-    background-color 0.25s ease;
 }
 
-.feed-item:hover {
-  border-color: rgba(138, 90, 59, 0.34);
-  background: #fbf6ec;
+.feed-item + .feed-item {
+  border-top: 1px solid var(--panel-border);
+}
+
+.feed-item:hover h3 {
+  color: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.feed-item:focus-visible {
+  outline: 2px solid var(--accent-brown);
+  outline-offset: 2px;
 }
 
 .card-tag {
   align-self: flex-start;
-  padding: 4px 12px;
-  border-radius: 999px;
-  color: #7a5436;
+  padding: 4px 0;
+  color: var(--accent-brown);
   font-size: 12px;
-  background: #ecdec5;
 }
 
 .feed-item h3 {
@@ -627,17 +626,14 @@ onBeforeRouteLeave(() => {
   justify-content: center;
   gap: 10px;
   padding: 40px 20px;
-  border: 1px dashed rgba(138, 90, 59, 0.22);
-  border-radius: 20px;
-  background: var(--panel-bg, #fffdf9);
   text-align: center;
 }
 
 .state-spinner {
   width: 26px;
   height: 26px;
-  border: 2px solid rgba(138, 90, 59, 0.22);
-  border-top-color: var(--accent-brown, #8a5a3b);
+  border: 2px solid rgba(var(--accent-brown-rgb), 0.22);
+  border-top-color: var(--accent-brown, #9b6846);
   border-radius: 50%;
   animation: state-spin 0.8s linear infinite;
 }

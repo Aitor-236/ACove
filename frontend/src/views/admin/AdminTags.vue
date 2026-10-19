@@ -191,7 +191,7 @@ onMounted(loadTags)
       </div>
     </header>
 
-    <section class="admin-panel toolbar">
+    <section class="toolbar">
       <!-- 输入框和搜索按钮作为一个整体换行，窄屏时不会拆散 -->
       <div class="search-group">
         <el-input
@@ -361,10 +361,9 @@ onMounted(loadTags)
 .tag-chip {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 13px;
-  background: #ecdec5;
+  background: transparent;
 }
 
 .tag-count {
@@ -389,7 +388,7 @@ onMounted(loadTags)
 
 /* 弹窗和后台面板保持同一套圆角/底色，不额外引入新风格 */
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

@@ -105,13 +105,13 @@ async function handleLogin() {
 
 <style scoped>
 .login-page {
-  --el-color-primary: #8a5a3b;
+  --el-color-primary: var(--accent-brown);
   --el-color-primary-light-3: #b98a5e;
   --el-color-primary-light-5: #cfa986;
   --el-color-primary-light-7: #e2cbaf;
   --el-color-primary-light-8: #ecdcc6;
   --el-color-primary-light-9: #f4ebdd;
-  --el-color-primary-dark-2: #6f4730;
+  --el-color-primary-dark-2: #80583d;
 
   display: flex;
   align-items: center;
@@ -124,7 +124,7 @@ async function handleLogin() {
 .login-card {
   width: min(420px, 100%);
   padding: 40px 38px 32px;
-  border-radius: 24px;
+  border-radius: var(--radius-panel, 6px);
 }
 
 .login-header {
@@ -139,11 +139,10 @@ async function handleLogin() {
   width: 60px;
   height: 60px;
   margin: 0 auto 18px;
-  border-radius: 18px;
-  color: #fdf9f2;
+  color: var(--accent-brown);
   font-size: 28px;
   font-weight: 700;
-  background: var(--accent-brown, #8a5a3b);
+  background: transparent;
 }
 
 .login-header h1 {
@@ -164,9 +163,9 @@ async function handleLogin() {
 }
 
 .login-card :deep(.el-input__wrapper) {
-  border-radius: 12px;
+  border-radius: var(--radius-control, 4px);
   background: var(--panel-alt-bg);
-  box-shadow: 0 0 0 1px rgba(138, 90, 59, 0.24) inset;
+  box-shadow: 0 0 0 1px rgba(var(--accent-brown-rgb), 0.24) inset;
 }
 
 .login-card :deep(.el-input__wrapper.is-focus) {
@@ -178,7 +177,7 @@ async function handleLogin() {
   height: 46px;
   margin-top: 2px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 4px);
   font-size: 16px;
   letter-spacing: 8px;
 }

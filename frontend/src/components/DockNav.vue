@@ -48,8 +48,8 @@ function isActive(path: string) {
   max-width: calc(100vw - 24px);
   padding: 10px;
   transform: translateX(-50%);
-  border: 1px solid rgba(138, 90, 59, 0.14);
-  border-radius: 24px;
+  border: 1px solid rgba(var(--accent-brown-rgb), 0.14);
+  border-radius: var(--radius-panel, 6px);
   background: #fffdf9;
 }
 
@@ -61,11 +61,8 @@ function isActive(path: string) {
   width: 86px;
   height: 70px;
   gap: 5px;
-  border-radius: 16px;
   color: rgba(74, 54, 41, 0.72);
-  transition:
-    color 0.25s ease,
-    background-color 0.25s ease;
+  transition: color 0.25s ease;
 }
 
 .dock-icon {
@@ -74,10 +71,8 @@ function isActive(path: string) {
   justify-content: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
   font-size: 20px;
   line-height: 1;
-  background: var(--panel-alt-bg, #f8f2e7);
 }
 
 .dock-label {
@@ -86,16 +81,16 @@ function isActive(path: string) {
 }
 
 .dock-item:hover {
-  color: #8a5a3b;
-  background: var(--panel-alt-bg, #f8f2e7);
+  color: var(--accent-brown, #9b6846);
 }
 
 .dock-item.is-active {
-  color: var(--accent-brown, #8a5a3b);
+  color: var(--accent-brown, #9b6846);
   background: transparent;
 }
 
-.dock-item.is-active .dock-label {
+.dock-item.is-active .dock-label,
+.dock-item:hover .dock-label {
   text-decoration: underline;
   text-decoration-thickness: 2px;
   text-underline-offset: 5px;

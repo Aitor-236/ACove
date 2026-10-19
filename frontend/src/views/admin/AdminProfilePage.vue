@@ -423,7 +423,7 @@ onBeforeUnmount(() => {
 
 .html-import-copy code {
   padding: 2px 5px;
-  border-radius: 6px;
+  border-radius: var(--radius-control, 4px);
   color: var(--accent-brown);
   background: var(--panel-alt-bg);
 }

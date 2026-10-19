@@ -269,7 +269,7 @@ onBeforeRouteLeave(() => {
       <div class="articles-layout">
         <section class="content-column">
           <!-- 关键词搜索：对应 GET /article/list 的 keyword 参数 -->
-          <div class="search-bar surface-panel">
+          <div class="search-bar">
             <svg
               class="search-icon"
               viewBox="0 0 24 24"
@@ -364,7 +364,7 @@ onBeforeRouteLeave(() => {
             <router-link
               v-for="article in articles"
               :key="article.id"
-              class="article-item surface-panel"
+              class="article-item"
               :to="`/articles/${article.id}`"
             >
               <div class="article-head">
@@ -428,7 +428,7 @@ onBeforeRouteLeave(() => {
 
         <!-- 右侧筛选面板：分类 + 标签，点一下就能筛出对应的文章 -->
         <aside class="sidebar" aria-label="文章筛选">
-          <section class="surface-panel sidebar-panel">
+          <section class="sidebar-panel">
             <h2 class="sidebar-title">分类</h2>
             <div class="filter-list">
               <button
@@ -439,13 +439,13 @@ onBeforeRouteLeave(() => {
                 :class="{ 'is-active': activeCategorySlug === option.slug }"
                 @click="selectCategory(option.slug)"
               >
-                <span>{{ option.name }}</span>
+                <span class="filter-name">{{ option.name }}</span>
                 <span class="filter-count">{{ option.count }}</span>
               </button>
             </div>
           </section>
 
-          <section v-if="tags.length" class="surface-panel sidebar-panel">
+          <section v-if="tags.length" class="sidebar-panel">
             <h2 class="sidebar-title">标签</h2>
             <div class="filter-list">
               <button
@@ -456,7 +456,7 @@ onBeforeRouteLeave(() => {
                 :class="{ 'is-active': activeTagName === tag.name }"
                 @click="selectTagName(tag.name)"
               >
-                <span>{{ tag.name }}</span>
+                <span class="filter-name">{{ tag.name }}</span>
                 <span class="filter-count">{{ tag.articleCount }}</span>
               </button>
             </div>
@@ -485,19 +485,24 @@ onBeforeRouteLeave(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px 8px 18px;
-  border-radius: 999px;
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--panel-border-strong);
   transition: border-color 0.2s ease;
 }
 
 .search-bar:focus-within {
-  border-color: rgba(138, 90, 59, 0.45);
+  border-color: var(--accent-brown);
 }
 
 .search-icon {
   flex-shrink: 0;
   width: 18px;
   height: 18px;
+  color: var(--text-muted);
+  transition: color 0.2s ease;
+}
+
+.search-bar:focus-within .search-icon {
   color: var(--accent-brown);
 }
 
@@ -530,29 +535,46 @@ onBeforeRouteLeave(() => {
   height: 40px;
   padding: 0 18px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 4px);
   font-size: 14px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: color 0.2s ease;
+}
+
+.search-button,
+.search-clear {
+  padding-right: 8px;
+  padding-left: 8px;
 }
 
 .search-button {
-  color: #fdf9f2;
-  background: var(--accent-brown, #8a5a3b);
+  color: var(--accent-brown);
+  background: transparent;
 }
 
 .search-clear {
-  color: var(--accent-brown);
-  background: var(--panel-alt-bg);
+  color: var(--text-muted);
+  background: transparent;
 }
 
-.search-button:hover {
-  background: var(--text-strong, #3f2e22);
-}
-
+.search-button:hover,
 .search-clear:hover,
 .pager-button:not(:disabled):hover {
-  background: var(--bg-cream, #f6f1e7);
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.search-button:active,
+.pager-button:not(:disabled):active {
+  color: var(--accent-brown);
+}
+
+.search-button:focus-visible,
+.search-clear:focus-visible,
+.pager-button:focus-visible {
+  outline: 2px solid var(--accent-brown);
+  outline-offset: 2px;
 }
 
 /* ---------- 窄屏筛选下拉（≤860px 才出现，替代右侧分类/标签栏） ---------- */
@@ -562,15 +584,15 @@ onBeforeRouteLeave(() => {
   gap: 12px;
   margin-top: 14px;
   /* 聚焦描边 / 选中态跟着主题走，不要 Element Plus 默认蓝 */
-  --el-color-primary: #8a5a3b;
+  --el-color-primary: var(--accent-brown);
   --el-color-primary-light-3: #b98a5e;
   --el-color-primary-light-5: #cfa986;
   --el-color-primary-light-7: #e2cbaf;
   --el-color-primary-light-8: #ecdcc6;
   --el-color-primary-light-9: #f4ebdd;
-  --el-color-primary-dark-2: #6f4730;
+  --el-color-primary-dark-2: #80583d;
   --el-text-color-placeholder: var(--text-muted);
-  --el-border-color-hover: rgba(138, 90, 59, 0.45);
+  --el-border-color-hover: rgba(var(--accent-brown-rgb), 0.45);
   --el-fill-color-blank: var(--panel-bg);
 }
 
@@ -581,9 +603,9 @@ onBeforeRouteLeave(() => {
 
 .filter-bar :deep(.el-select__wrapper) {
   min-height: 46px;
-  border-radius: 14px;
+  border-radius: var(--radius-control, 4px);
   background: var(--panel-bg);
-  box-shadow: 0 0 0 1px rgba(138, 90, 59, 0.24) inset;
+  box-shadow: 0 0 0 1px rgba(var(--accent-brown-rgb), 0.24) inset;
 }
 
 .filter-bar :deep(.el-select__wrapper.is-focused) {
@@ -611,17 +633,16 @@ onBeforeRouteLeave(() => {
   gap: 8px;
   padding: 4px 12px;
   border: none;
-  border-radius: 999px;
   color: var(--accent-brown);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  background: var(--panel-alt-bg);
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 59, 0.22);
+  background: transparent;
 }
 
 .filter-hint-chip:hover {
-  background: #fbf6ec;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .filter-hint-clear {
@@ -633,20 +654,23 @@ onBeforeRouteLeave(() => {
 .article-list {
   display: flex;
   flex-direction: column;
-  gap: 20px;
   margin-top: 20px;
 }
 
 .article-item {
   display: block;
   padding: 30px 32px;
-  border-radius: 24px;
   cursor: pointer;
-  transition: border-color 0.25s ease;
 }
 
-.article-item:hover {
-  border-color: rgba(138, 90, 59, 0.34);
+.article-item + .article-item {
+  border-top: 1px solid var(--panel-border);
+}
+
+.article-item:hover h2 {
+  color: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .article-item:focus-visible {
@@ -664,20 +688,16 @@ onBeforeRouteLeave(() => {
 .card-tag {
   padding: 4px 12px;
   border: none;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  background: #ecdec5;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
 }
 
 .card-tag:hover {
-  color: #fdf9f2;
-  background: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 /* 文章卡片上的标签，点一下筛出同标签的文章 */
@@ -691,21 +711,16 @@ onBeforeRouteLeave(() => {
 .article-tag {
   padding: 3px 12px;
   border: none;
-  border-radius: 999px;
   color: var(--accent-brown);
   font-size: 12px;
   font-family: inherit;
   cursor: pointer;
-  background: var(--panel-alt-bg);
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 59, 0.22);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
 }
 
 .article-tag:hover {
-  color: #fdf9f2;
-  background: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .article-head time {
@@ -734,7 +749,7 @@ onBeforeRouteLeave(() => {
   gap: 10px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid rgba(138, 90, 59, 0.14);
+  border-top: 1px solid rgba(var(--accent-brown-rgb), 0.14);
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -749,9 +764,6 @@ onBeforeRouteLeave(() => {
   gap: 10px;
   margin-top: 20px;
   padding: 60px 24px;
-  border: 1px dashed rgba(138, 90, 59, 0.22);
-  border-radius: 24px;
-  background: var(--panel-bg);
   text-align: center;
 }
 
@@ -763,7 +775,7 @@ onBeforeRouteLeave(() => {
 .state-spinner {
   width: 26px;
   height: 26px;
-  border: 2px solid rgba(138, 90, 59, 0.22);
+  border: 2px solid rgba(var(--accent-brown-rgb), 0.22);
   border-top-color: var(--accent-brown);
   border-radius: 50%;
   animation: state-spin 0.8s linear infinite;
@@ -787,13 +799,12 @@ onBeforeRouteLeave(() => {
 
 .pager-button {
   color: var(--accent-brown);
-  background: var(--panel-alt-bg);
+  background: transparent;
 }
 
 .pager-button:disabled {
   color: var(--text-muted);
   cursor: not-allowed;
-  background: var(--panel-bg);
   opacity: 0.6;
 }
 
@@ -813,10 +824,13 @@ onBeforeRouteLeave(() => {
   align-self: start;
 }
 
-/* 分类、标签各自一块面板，符合"一条内容一个框" */
+/* 分类和标签以标题、留白分组，避免重复套框。 */
 .sidebar-panel {
   padding: 24px 18px;
-  border-radius: 24px;
+}
+
+.sidebar-panel + .sidebar-panel {
+  border-top: 1px solid var(--panel-border);
 }
 
 .sidebar-title {
@@ -839,38 +853,37 @@ onBeforeRouteLeave(() => {
   width: 100%;
   padding: 10px 14px;
   border: none;
-  border-radius: 14px;
   color: var(--text-body);
   font-size: 14px;
   cursor: pointer;
-  background: var(--panel-alt-bg);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
+  transition: color 0.2s ease;
 }
 
 .filter-tag:hover {
   color: var(--accent-brown);
-  background: #fbf6ec;
 }
 
 .filter-tag.is-active {
-  color: #fdf9f2;
-  background: var(--accent-brown, #8a5a3b);
+  color: var(--accent-brown, #9b6846);
+}
+
+.filter-tag.is-active .filter-name,
+.filter-tag:hover .filter-name {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .filter-count {
   min-width: 26px;
   padding: 2px 8px;
-  border-radius: 999px;
+  color: var(--text-muted);
   font-size: 12px;
   text-align: center;
-  background: #ecdec5;
 }
 
 .filter-tag.is-active .filter-count {
-  color: #fdf9f2;
-  background: rgba(255, 255, 255, 0.24);
+  color: var(--accent-brown);
 }
 
 @media (max-width: 860px) {

@@ -103,8 +103,8 @@ onBeforeUnmount(() => {
 <template>
   <div class="page-shell about-shell">
     <main class="page-container about-container">
-      <div v-if="loading" class="surface-panel about-state">正在加载个人简介…</div>
-      <section v-else-if="loadError" class="surface-panel about-state">
+      <div v-if="loading" class="about-state">正在加载个人简介…</div>
+      <section v-else-if="loadError" class="about-state">
         <p>个人简介加载失败，请稍后重试。</p>
         <el-button type="primary" @click="loadProfilePage">重新加载</el-button>
       </section>
@@ -123,7 +123,7 @@ onBeforeUnmount(() => {
         <div v-else class="about-state">站长还没有发布 HTML 简介。</div>
       </section>
 
-      <article v-else class="surface-panel about-markdown-panel">
+      <article v-else class="about-markdown-panel">
         <header class="about-owner">
           <img :src="ownerAvatarUrl" :alt="`${owner.username} 的头像`" />
           <div class="about-owner-copy">

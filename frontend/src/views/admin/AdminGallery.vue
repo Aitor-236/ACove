@@ -551,7 +551,7 @@ onMounted(loadAlbums)
   min-width: 0;
   padding: 4px 5px 4px 10px;
   border: 1px solid transparent;
-  border-radius: 15px;
+  border-radius: var(--radius-panel, 6px);
   transition: background-color 0.18s ease;
 }
 
@@ -677,7 +677,7 @@ onMounted(loadAlbums)
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 17px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 
@@ -707,7 +707,7 @@ onMounted(loadAlbums)
   flex: 0 0 32px;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-control, 4px);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -789,7 +789,7 @@ onMounted(loadAlbums)
 }
 
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

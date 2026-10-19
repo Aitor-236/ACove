@@ -900,6 +900,9 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 .status-tag {
   margin-left: 10px;
   vertical-align: middle;
+  border: 0;
+  color: var(--text-muted);
+  background: transparent;
 }
 
 /* 顶部自动保存状态：保存中 / 已保存 HH:mm / 保存失败 · 重试 */
@@ -940,17 +943,14 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 
 .preview-chip {
   padding: 3px 12px;
-  border-radius: 999px;
   color: var(--accent-brown);
   font-size: 12px;
-  background: var(--panel-alt-bg);
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 59, 0.22);
+  background: transparent;
 }
 
 .preview-chip.is-category {
-  color: #7a5436;
-  background: #ecdec5;
-  box-shadow: none;
+  color: var(--accent-brown);
+  background: transparent;
 }
 
 .preview-summary {
@@ -964,7 +964,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 .preview-body {
   margin-top: 22px;
   padding-top: 22px;
-  border-top: 1px solid rgba(138, 90, 59, 0.16);
+  border-top: 1px solid rgba(var(--accent-brown-rgb), 0.16);
 }
 
 .editor-layout {

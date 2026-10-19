@@ -129,7 +129,7 @@ const acoveSourceTheme = EditorView.theme({
     color: 'var(--text-strong)',
     backgroundColor: 'var(--panel-bg)',
     border: '1px solid var(--panel-border-strong)',
-    borderRadius: '8px'
+    borderRadius: 'var(--radius-control, 4px)'
   },
   '.cm-tooltip': {
     color: 'var(--text-strong)',
@@ -152,7 +152,7 @@ const acoveMarkdownHighlight = HighlightStyle.define([
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, color: 'var(--text-muted)', textDecoration: 'line-through' },
   { tag: [t.link, t.url], color: 'var(--accent-brown)', textDecoration: 'underline' },
-  { tag: t.monospace, color: 'var(--accent-brown)', backgroundColor: 'rgba(138, 90, 59, 0.1)' },
+  { tag: t.monospace, color: 'var(--accent-brown)', backgroundColor: 'rgba(var(--accent-brown-rgb), 0.1)' },
   { tag: t.quote, color: 'var(--text-muted)', fontStyle: 'italic' },
   { tag: [t.list, t.labelName, t.string, t.escape, t.character], color: 'var(--accent-brown-soft)' },
   { tag: [t.processingInstruction, t.contentSeparator], color: 'var(--text-faint)' }
@@ -447,7 +447,7 @@ defineExpose({
   width: 3px;
   height: 46px;
   border-radius: 999px;
-  background: var(--panel-border-strong, rgba(138, 90, 59, 0.22));
+  background: var(--panel-border-strong, rgba(var(--accent-brown-rgb), 0.22));
 }
 
 .split-editor :deep(.el-splitter-bar__dragger-vertical:before),
@@ -455,7 +455,7 @@ defineExpose({
   width: 46px;
   height: 3px;
   border-radius: 999px;
-  background: var(--panel-border-strong, rgba(138, 90, 59, 0.22));
+  background: var(--panel-border-strong, rgba(var(--accent-brown-rgb), 0.22));
 }
 
 /* 悬停 / 拖动时短杠亮成棕色：Element Plus 自带的 hover 只有默认色，这里统一接管 */
@@ -469,7 +469,7 @@ defineExpose({
   height: 100%;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 
@@ -528,7 +528,7 @@ defineExpose({
   height: 30px;
   padding: 0;
   border: 1px solid var(--panel-border-strong);
-  border-radius: 10px;
+  border-radius: var(--radius-control, 4px);
   color: var(--accent-brown);
   font-size: 15px;
   background: var(--panel-bg);

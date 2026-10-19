@@ -1,0 +1,110 @@
+- generic [ref=f63e1]:
+  - generic [ref=f63e3]:
+    - complementary [ref=f63e4]:
+      - generic [ref=f63e6]:
+        - generic [ref=f63e7]: A
+        - generic [ref=f63e8]:
+          - strong [ref=f63e9]: ACove
+          - generic [ref=f63e10]: 管理后台
+      - generic [ref=f63e11]:
+        - navigation "后台导航" [ref=f63e12]:
+          - generic [ref=f63e13]:
+            - paragraph [ref=f63e14]: 内容管理
+            - link "文章列表" [ref=f63e15] [cursor=pointer]:
+              - /url: /admin/articles
+            - link "新建文章" [ref=f63e21] [cursor=pointer]:
+              - /url: /admin/articles/new
+            - link "首页展示" [ref=f63e27] [cursor=pointer]:
+              - /url: /admin/home-articles
+            - link "分类管理" [ref=f63e33] [cursor=pointer]:
+              - /url: /admin/categories
+            - link "标签管理" [ref=f63e39] [cursor=pointer]:
+              - /url: /admin/tags
+            - link "图库管理" [ref=f63e45] [cursor=pointer]:
+              - /url: /admin/galleries
+          - generic [ref=f63e52]:
+            - paragraph [ref=f63e53]: 待办事项
+            - link "待办清单" [ref=f63e54] [cursor=pointer]:
+              - /url: /admin/todos
+          - generic [ref=f63e60]:
+            - paragraph [ref=f63e61]: 开源项目
+            - link "项目列表" [ref=f63e62] [cursor=pointer]:
+              - /url: /admin/projects
+          - generic [ref=f63e69]:
+            - paragraph [ref=f63e70]: 个人管理
+            - link "个人资料" [ref=f63e71] [cursor=pointer]:
+              - /url: /admin/profile
+            - link "个人简介" [ref=f63e77] [cursor=pointer]:
+              - /url: /admin/profile-page
+          - generic [ref=f63e83]:
+            - paragraph [ref=f63e84]: 站点设置
+            - link "网站设置" [ref=f63e85] [cursor=pointer]:
+              - /url: /admin/site
+          - generic [ref=f63e91]:
+            - paragraph [ref=f63e92]: 站点数据
+            - link "访问统计" [ref=f63e93] [cursor=pointer]:
+              - /url: /admin/visits
+        - generic [ref=f63e99]:
+          - generic [ref=f63e100]:
+            - generic [ref=f63e101]: A
+            - generic [ref=f63e102]: ACove
+          - generic [ref=f63e103]:
+            - link "返回前台" [ref=f63e104] [cursor=pointer]:
+              - /url: /
+            - button "退出登录" [ref=f63e105] [cursor=pointer]
+    - main [ref=f63e106]:
+      - generic [ref=f63e107]:
+        - generic [ref=f63e108]:
+          - heading "分类管理" [level=1] [ref=f63e110]
+          - generic [ref=f63e111]:
+            - button "刷新" [ref=f63e112] [cursor=pointer]
+            - button "新建分类" [ref=f63e114] [cursor=pointer]
+        - generic [ref=f63e118]:
+          - table [ref=f63e120]:
+            - rowgroup [ref=f63e126]:
+              - row [ref=f63e127]:
+                - columnheader "分类" [ref=f63e128]
+                - columnheader "英文标识" [ref=f63e130]
+                - columnheader "文章数" [ref=f63e132]
+                - columnheader "操作" [ref=f63e134]
+          - table [ref=f63e140]:
+            - rowgroup [ref=f63e146]:
+              - row [ref=f63e147] [cursor=pointer]:
+                - cell [ref=f63e148]:
+                  - button "开发笔记" [ref=f63e150]
+                - cell [ref=f63e151]:
+                  - code [ref=f63e153]: dev
+                - cell [ref=f63e154]:
+                  - button "3 篇" [ref=f63e156]
+                - cell [ref=f63e158]:
+                  - generic [ref=f63e160]:
+                    - button "编辑" [ref=f63e161]
+                    - button "删除" [ref=f63e163]
+        - dialog "新建分类" [ref=f63e178]:
+          - generic [active] [ref=f63e179]:
+            - generic [ref=f63e180]:
+              - heading "新建分类" [level=2] [ref=f63e181]
+              - button "Close this dialog" [ref=f63e182] [cursor=pointer]
+            - generic [ref=f63e187]:
+              - generic [ref=f63e188]:
+                - generic [ref=f63e189]: "*分类名称"
+                - generic [ref=f63e192]:
+                  - textbox "*分类名称" [ref=f63e193]:
+                    - /placeholder: 例如：前端
+                  - status "0 / 50 characters" [ref=f63e195]:
+                    - generic [ref=f63e196]: 0 / 50
+              - generic [ref=f63e197]:
+                - generic [ref=f63e198]: "*英文标识"
+                - generic [ref=f63e199]:
+                  - generic [ref=f63e201]:
+                    - textbox "*英文标识" [ref=f63e202]:
+                      - /placeholder: 例如：frontend
+                    - status "0 / 50 characters" [ref=f63e204]:
+                      - generic [ref=f63e205]: 0 / 50
+                  - paragraph [ref=f63e206]: 用于前台地址栏筛选，改名不影响已发布文章
+            - generic [ref=f63e207]:
+              - button "取消" [ref=f63e208] [cursor=pointer]
+              - button "创建" [ref=f63e210] [cursor=pointer]
+  - generic [ref=f63e165]:
+    - generic "Toggle devtools panel" [ref=f63e166] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f63e172] [cursor=pointer]

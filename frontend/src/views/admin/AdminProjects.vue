@@ -348,7 +348,7 @@ onMounted(loadProjects)
 
 /* 弹窗和后台面板保持同一套圆角/底色，不额外引入新风格 */
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

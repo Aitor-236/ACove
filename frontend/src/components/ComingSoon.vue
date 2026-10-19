@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="page-shell coming-soon-shell">
     <div class="page-container">
-      <section class="surface-panel coming-soon-card">
+      <section class="coming-soon-card">
         <p class="coming-soon-eyebrow">{{ title }}</p>
         <p class="coming-soon-text">敬请期待</p>
       </section>

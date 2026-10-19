@@ -56,16 +56,16 @@ onMounted(loadGalleries)
         <p v-if="!loading && !error" class="gallery-total">{{ galleries.length }} 个图库</p>
       </header>
 
-      <section v-if="loading" class="surface-panel gallery-state" aria-live="polite">
+      <section v-if="loading" class="gallery-state" aria-live="polite">
         <p>正在加载图库……</p>
       </section>
 
-      <section v-else-if="error" class="surface-panel gallery-state" role="alert">
+      <section v-else-if="error" class="gallery-state" role="alert">
         <p>{{ error }}</p>
         <el-button @click="loadGalleries">重新加载</el-button>
       </section>
 
-      <section v-else-if="!galleries.length" class="surface-panel gallery-state">
+      <section v-else-if="!galleries.length" class="gallery-state">
         <el-icon class="state-icon"><Picture /></el-icon>
         <p>这里还没有公开的图库。</p>
       </section>
@@ -75,7 +75,7 @@ onMounted(loadGalleries)
           v-for="gallery in galleries"
           :key="gallery.id"
           type="button"
-          class="surface-panel gallery-card"
+          class="gallery-card"
           :aria-label="`查看图库：${gallery.name}，共 ${gallery.imageCount} 张图片`"
           @click="openGallery(gallery.id)"
         >
@@ -89,11 +89,11 @@ onMounted(loadGalleries)
             <span v-else class="cover-placeholder" aria-hidden="true">
               <el-icon><Picture /></el-icon>
             </span>
-            <span class="image-count">{{ gallery.imageCount }} 张</span>
           </span>
 
           <span class="gallery-card-body">
             <span class="gallery-card-title">{{ gallery.name }}</span>
+            <span class="image-count">{{ gallery.imageCount }} 张</span>
             <span v-if="gallery.description" class="gallery-card-description">
               {{ gallery.description }}
             </span>
@@ -150,16 +150,19 @@ onMounted(loadGalleries)
 .gallery-card {
   display: block;
   min-width: 0;
-  padding: 10px;
+  padding: 0;
+  border: none;
+  background: transparent;
   overflow: hidden;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s ease;
 }
 
-.gallery-card:hover {
-  border-color: var(--panel-border-strong);
+.gallery-card:hover .gallery-card-title {
+  color: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .gallery-card:focus-visible {
@@ -172,7 +175,7 @@ onMounted(loadGalleries)
   display: block;
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  border-radius: 18px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-alt-bg);
 }
 
@@ -194,14 +197,7 @@ onMounted(loadGalleries)
 }
 
 .image-count {
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  padding: 6px 10px;
-  border: 1px solid var(--panel-border);
-  border-radius: 999px;
-  color: var(--text-strong);
-  background: var(--panel-bg);
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1;
 }
@@ -263,12 +259,11 @@ onMounted(loadGalleries)
   }
 
   .gallery-card {
-    padding: 7px;
-    border-radius: 20px;
+    padding: 0;
   }
 
   .gallery-cover {
-    border-radius: 14px;
+    border-radius: var(--radius-panel, 6px);
   }
 
   .gallery-card-body {

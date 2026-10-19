@@ -51,21 +51,21 @@ onMounted(loadProjects)
         <h1 class="projects-title">开源项目</h1>
       </header>
 
-      <section v-if="loading" class="surface-panel projects-state">
+      <section v-if="loading" class="projects-state">
         <p>正在加载……</p>
       </section>
 
-      <section v-else-if="error" class="surface-panel projects-state">
+      <section v-else-if="error" class="projects-state">
         <p>{{ error }}</p>
         <el-button @click="loadProjects">重新加载</el-button>
       </section>
 
-      <section v-else-if="!projects.length" class="surface-panel projects-state">
+      <section v-else-if="!projects.length" class="projects-state">
         <p>还没有开源项目，先去后台添加一个吧。</p>
       </section>
 
       <div v-else class="project-grid">
-        <article v-for="project in projects" :key="project.id" class="surface-panel project-card">
+        <article v-for="project in projects" :key="project.id" class="project-card">
           <header class="project-head">
             <h2 class="project-name">{{ project.name }}</h2>
             <a
@@ -134,20 +134,19 @@ onMounted(loadProjects)
 }
 
 .project-grid {
-  /* 瀑布流：CSS 多列布局——列宽对齐、卡片高度各随内容，谁也不会被拉成一样高 */
-  column-width: 320px;
-  column-gap: 22px;
+  display: flex;
+  flex-direction: column;
 }
 
-/* 一张卡片 = 一个项目，和全站面板同一套框样式，只是内容多两段小字 */
+/* 每个项目是一条内容，相邻条目由细线分隔。 */
 .project-card {
-  /* 多列布局里卡片是「列内的一块」：占满当前列宽、内容多高就多高，
-     并且不允许被拆到两列去（break-inside: avoid） */
   width: 100%;
   min-width: 0;
-  margin-bottom: 22px;
   padding: 24px 22px;
-  break-inside: avoid;
+}
+
+.project-card + .project-card {
+  border-top: 1px solid var(--panel-border);
 }
 
 .project-head {
@@ -186,11 +185,13 @@ onMounted(loadProjects)
 }
 
 .project-link:hover {
-  color: #6f4327;
+  color: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .project-desc {
-  /* 卡片不再是 flex 容器，段落间距改用 margin，保证和标题、日志之间都是 14px */
+  /* 段落与标题、日志之间保持一致的间距。 */
   margin: 14px 0 0;
   color: var(--text-body);
   font-size: 14px;

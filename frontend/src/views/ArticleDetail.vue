@@ -94,7 +94,7 @@ watch(
         <router-link class="state-link" to="/articles">去看看其它文章</router-link>
       </div>
 
-      <article v-else-if="article" class="article-detail surface-panel">
+      <article v-else-if="article" class="article-detail">
         <header class="detail-header">
           <router-link
             class="card-tag"
@@ -148,7 +148,7 @@ watch(
   align-items: center;
   padding: 8px 14px;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 4px);
   color: var(--accent-brown);
   font-size: 14px;
   font-family: inherit;
@@ -163,30 +163,25 @@ watch(
 
 .article-detail {
   padding: 52px 56px 56px;
-  border-radius: 28px;
 }
 
 .detail-header {
   padding-bottom: 26px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.16);
+  border-bottom: 1px solid rgba(var(--accent-brown-rgb), 0.16);
 }
 
 .card-tag {
   display: inline-block;
   padding: 4px 12px;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 12px;
   text-decoration: none;
-  background: #ecdec5;
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
 }
 
 .card-tag:hover {
-  color: #fdf9f2;
-  background: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .detail-header h1 {
@@ -213,20 +208,15 @@ watch(
 .tag-chip {
   display: inline-block;
   padding: 3px 12px;
-  border-radius: 999px;
   color: var(--accent-brown);
   font-size: 12px;
   text-decoration: none;
-  background: var(--panel-alt-bg);
-  box-shadow: inset 0 0 0 1px rgba(138, 90, 59, 0.22);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
 }
 
 .tag-chip:hover {
-  color: #fdf9f2;
-  background: var(--accent-brown);
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .detail-meta {
@@ -250,16 +240,13 @@ watch(
   align-items: center;
   gap: 10px;
   padding: 64px 24px;
-  border: 1px dashed rgba(138, 90, 59, 0.22);
-  border-radius: 28px;
-  background: var(--panel-bg);
   text-align: center;
 }
 
 .state-spinner {
   width: 26px;
   height: 26px;
-  border: 2px solid rgba(138, 90, 59, 0.22);
+  border: 2px solid rgba(var(--accent-brown-rgb), 0.22);
   border-top-color: var(--accent-brown);
   border-radius: 50%;
   animation: state-spin 0.8s linear infinite;
@@ -279,10 +266,14 @@ watch(
 .state-link {
   display: inline-flex;
   padding: 9px 18px;
-  border-radius: 12px;
-  color: #fdf9f2;
+  color: var(--accent-brown);
   font-size: 14px;
-  background: var(--accent-brown, #8a5a3b);
+  text-underline-offset: 4px;
+}
+
+.state-link:hover {
+  color: var(--text-strong);
+  text-decoration: underline;
 }
 
 @media (max-width: 720px) {

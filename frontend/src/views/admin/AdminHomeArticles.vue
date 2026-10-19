@@ -353,7 +353,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 /* 拖拽中的占位行：淡底 + 虚线，一眼能看出会落在哪 */
 .selected-item.is-ghost {
   border-style: dashed;
-  border-color: rgba(138, 90, 59, 0.5);
+  border-color: rgba(var(--accent-brown-rgb), 0.5);
   background: var(--panel-alt-bg);
   opacity: 0.7;
 }
@@ -369,7 +369,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
   justify-content: space-between;
   gap: 10px;
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.14);
+  border-bottom: 1px solid rgba(var(--accent-brown-rgb), 0.14);
 }
 
 .panel-title {
@@ -432,7 +432,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
   min-width: 0;
   padding: 10px 12px;
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-alt-bg);
 }
 
@@ -478,16 +478,15 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnl
 
 .category-chip {
   padding: 2px 8px;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 11px;
-  background: #ecdec5;
+  background: transparent;
 }
 
 /* 草稿还在选择里，但不会出现在首页，用状态色区分一下 */
 .draft-chip {
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: var(--radius-control, 4px);
   color: #b4553c;
   font-size: 11px;
   background: rgba(180, 85, 60, 0.12);

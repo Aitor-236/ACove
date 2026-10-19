@@ -577,7 +577,6 @@ onBeforeUnmount(() => {
       </div>
 
       <div class="crop-controls">
-        <p class="crop-hint">拖动图片调整位置，滑块或滚轮缩放，圆圈里就是最终头像</p>
         <el-slider
           :model-value="cropScale"
           :min="1"
@@ -634,10 +633,10 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid var(--panel-border);
   border-radius: 50%;
-  color: #fdf9f2;
+  color: var(--accent-brown);
   font-size: 34px;
   font-weight: 600;
-  background: var(--accent-brown, #8a5a3b);
+  background: transparent;
 }
 
 .avatar-preview img {
@@ -696,8 +695,8 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   background: var(--panel-alt-bg);
   box-shadow:
-    0 0 0 1px rgba(138, 90, 59, 0.18) inset,
-    0 0 0 8px rgba(138, 90, 59, 0.06);
+    0 0 0 1px rgba(var(--accent-brown-rgb), 0.18) inset,
+    0 0 0 8px rgba(var(--accent-brown-rgb), 0.06);
   cursor: grab;
   touch-action: none;
 }
@@ -718,16 +717,8 @@ onBeforeUnmount(() => {
   padding: 0 6px;
 }
 
-.crop-hint {
-  margin: 0 0 6px;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: center;
-}
-
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

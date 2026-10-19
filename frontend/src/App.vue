@@ -34,7 +34,8 @@ onMounted(async () => {
 :root {
   /* 浅色米白 + 棕色：整体主题变量，前台页面统一复用 */
   --bg-cream: #f6f1e7;
-  --accent-brown: #8a5a3b;
+  --accent-brown: #9b6846;
+  --accent-brown-rgb: 155, 104, 70;
   --accent-brown-soft: #b98a5e;
   --text-strong: #3f2e22;
   --text-body: rgba(74, 54, 41, 0.78);
@@ -43,10 +44,15 @@ onMounted(async () => {
   --text-faint: rgba(74, 54, 41, 0.38);
   --panel-bg: #fffdf9;
   --panel-alt-bg: #f8f2e7;
-  --panel-border: rgba(138, 90, 59, 0.14);
+  --panel-border: rgba(var(--accent-brown-rgb), 0.14);
   /* 比 --panel-border 重一点的描边，编辑器这类要看得见边界的地方用 */
-  --panel-border-strong: rgba(138, 90, 59, 0.22);
+  --panel-border-strong: rgba(var(--accent-brown-rgb), 0.22);
   --panel-shadow: none;
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --el-border-radius-base: var(--radius-control);
+  --el-border-radius-small: var(--radius-control);
+  --el-border-radius-round: var(--radius-control);
   /* Element Plus 浮层挂到 body 后也继承这些变量，输入框的清晰描边不受影响。 */
   --el-box-shadow: none;
   --el-box-shadow-light: none;
@@ -56,7 +62,7 @@ onMounted(async () => {
   --trend-up: #4a7a52;
   --trend-down: #b4553c;
   /* Todo 三个状态的点 / 标签色，前台卡片和后台列表共用 */
-  --status-doing: #8a5a3b;
+  --status-doing: var(--accent-brown);
   --status-todo: #b98a5e;
   --status-done: #4a7a52;
   /* 正文代码块：深棕底 + 暖色 token，规则在 styles/markdown.css */
@@ -106,7 +112,7 @@ a {
   text-decoration: none;
 }
 
-/* ---------- 前台通用外壳与框样式 ---------- */
+/* ---------- 页面外壳与必要容器 ---------- */
 /* 各页面直接复用这三个类，不要再各自复制一份；后台用的是 styles/admin.css */
 
 /* 页面外壳：实色底 + 给底部悬浮导航留出空间 */
@@ -122,10 +128,10 @@ a {
   margin: 0 auto;
 }
 
-/* 框：实色底 + 描边 + 圆角，每块内容只有一层 */
+/* 搜索、登录及独立 HTML 等需要明确边界的容器；普通内容使用留白排版。 */
 .surface-panel {
   border: 1px solid var(--panel-border);
-  border-radius: 26px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
 }
@@ -134,10 +140,53 @@ a {
 .el-dialog,
 .el-message-box {
   border: 1px solid var(--panel-border-strong);
+  border-radius: var(--radius-panel);
+}
+
+.el-popper {
+  --el-popper-border-radius: var(--radius-panel);
+}
+
+.el-notification {
+  --el-notification-radius: var(--radius-panel);
+}
+
+.el-message {
+  --el-message-border-radius: var(--radius-panel);
+}
+
+.el-image-viewer__btn {
+  border-radius: var(--radius-control);
+}
+
+.el-image-viewer__actions {
+  border-radius: var(--radius-panel);
 }
 
 .el-message.is-plain {
   border-color: var(--panel-border);
+}
+
+.el-button.el-button--primary {
+  --el-button-text-color: var(--accent-brown);
+  --el-button-bg-color: transparent;
+  --el-button-border-color: transparent;
+  --el-button-outline-color: var(--accent-brown);
+  --el-button-hover-text-color: var(--text-strong);
+  --el-button-hover-bg-color: transparent;
+  --el-button-hover-border-color: transparent;
+  --el-button-active-color: var(--text-strong);
+  --el-button-active-bg-color: transparent;
+  --el-button-active-border-color: transparent;
+  --el-button-disabled-text-color: var(--text-muted);
+  --el-button-disabled-bg-color: transparent;
+  --el-button-disabled-border-color: transparent;
+}
+
+.el-button.el-button--primary:not(.is-disabled):hover,
+.el-button.el-button--primary:not(.is-disabled):focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 /* 固定列的渐暗边缘由组件单独声明，随全站面板一起改成清晰边界。 */
@@ -162,20 +211,20 @@ a {
  * 用法：<el-select popper-class="front-select-popper">。
  */
 .el-popper.front-select-popper {
-  --el-color-primary: #8a5a3b;
+  --el-color-primary: var(--accent-brown);
   --el-color-primary-light-3: #b98a5e;
   --el-color-primary-light-5: #cfa986;
   --el-color-primary-light-7: #e2cbaf;
   --el-color-primary-light-8: #ecdcc6;
   --el-color-primary-light-9: #f4ebdd;
-  --el-color-primary-dark-2: #6f4730;
+  --el-color-primary-dark-2: #80583d;
   --el-bg-color-overlay: var(--panel-bg);
   --el-border-color-light: var(--panel-border);
   --el-fill-color-light: #f6efe3;
   --el-text-color-regular: var(--text-body);
   --el-box-shadow-light: none;
-  --el-border-radius-base: 12px;
-  --el-popper-border-radius: 16px;
+  --el-border-radius-base: var(--radius-control, 4px);
+  --el-popper-border-radius: var(--radius-panel, 6px);
 }
 
 /* 选项行稍微高一点，手指点在窄屏上更好按 */

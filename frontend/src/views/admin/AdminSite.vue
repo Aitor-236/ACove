@@ -636,7 +636,7 @@ onBeforeUnmount(() => {
   height: 180px;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
+  border-radius: var(--radius-panel, 6px);
   color: var(--text-muted);
   font-size: 13px;
   background: var(--panel-alt-bg);
@@ -684,8 +684,8 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   background: var(--panel-alt-bg);
   box-shadow:
-    0 0 0 1px rgba(138, 90, 59, 0.18) inset,
-    0 0 0 8px rgba(138, 90, 59, 0.06);
+    0 0 0 1px rgba(var(--accent-brown-rgb), 0.18) inset,
+    0 0 0 8px rgba(var(--accent-brown-rgb), 0.06);
   cursor: grab;
   touch-action: none;
 }
@@ -715,7 +715,7 @@ onBeforeUnmount(() => {
 }
 
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

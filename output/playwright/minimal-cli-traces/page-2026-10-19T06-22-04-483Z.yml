@@ -1,0 +1,44 @@
+- generic [ref=f61e1]:
+  - generic [ref=f61e2]:
+    - main [ref=f61e4]:
+      - generic [ref=f61e5]:
+        - generic [ref=f61e6]:
+          - generic [ref=f61e7]:
+            - textbox "搜索文章标题或摘要" [active] [ref=f61e11]: 无结果
+            - button "搜索" [ref=f61e12] [cursor=pointer]
+            - button "清除" [ref=f61e168] [cursor=pointer]
+          - generic [ref=f61e169]: 搜索“无结果”共 0 篇
+          - paragraph [ref=f61e172]: 没有找到与“无结果”相关的文章。
+        - complementary "文章筛选" [ref=f61e72]:
+          - generic [ref=f61e73]:
+            - heading "分类" [level=2] [ref=f61e74]
+            - generic [ref=f61e75]:
+              - button "全部 3" [ref=f61e76] [cursor=pointer]:
+                - generic [ref=f61e77]: 全部
+                - generic [ref=f61e78]: "3"
+              - button "开发笔记 3" [ref=f61e79] [cursor=pointer]:
+                - generic [ref=f61e80]: 开发笔记
+                - generic [ref=f61e81]: "3"
+          - generic [ref=f61e82]:
+            - heading "标签" [level=2] [ref=f61e83]
+            - generic [ref=f61e84]:
+              - button "前端 3" [ref=f61e85] [cursor=pointer]:
+                - generic [ref=f61e86]: 前端
+                - generic [ref=f61e87]: "3"
+              - button "设计 2" [ref=f61e88] [cursor=pointer]:
+                - generic [ref=f61e89]: 设计
+                - generic [ref=f61e90]: "2"
+    - navigation "全局导航" [ref=f61e91]:
+      - link "主页" [ref=f61e92] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=f61e98] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=f61e104] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=f61e111] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=f61e118] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=f61e124]:
+    - generic "Toggle devtools panel" [ref=f61e125] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f61e131] [cursor=pointer]

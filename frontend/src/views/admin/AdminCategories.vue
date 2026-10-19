@@ -283,12 +283,16 @@ onMounted(loadCategories)
   display: inline-block;
   padding: 4px 12px;
   border: none;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 13px;
   font-family: inherit;
   cursor: pointer;
-  background: #ecdec5;
+  background: transparent;
+}
+
+.category-chip:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 /* 整行是跳转入口，鼠标移到行上给出手型光标 */
@@ -298,11 +302,10 @@ onMounted(loadCategories)
 
 .category-slug {
   padding: 2px 8px;
-  border-radius: 8px;
   color: var(--text-body);
   font-size: 12px;
   font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  background: var(--panel-alt-bg);
+  background: transparent;
 }
 
 .row-actions {
@@ -320,7 +323,7 @@ onMounted(loadCategories)
 
 /* 弹窗和后台面板保持同一套圆角/底色，不额外引入新风格 */
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

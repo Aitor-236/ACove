@@ -1,0 +1,106 @@
+- generic [active] [ref=f61e1]:
+  - generic [ref=f61e2]:
+    - main [ref=f61e4]:
+      - generic [ref=f61e5]:
+        - generic [ref=f61e6]:
+          - generic [ref=f61e7]:
+            - textbox "搜索文章标题或摘要" [ref=f61e11]
+            - button "搜索" [ref=f61e12] [cursor=pointer]
+          - generic [ref=f61e173]:
+            - link [ref=f61e174] [cursor=pointer]:
+              - /url: /articles/1
+              - generic [ref=f61e175]:
+                - button "开发笔记" [ref=f61e176]
+                - time [ref=f61e177]: 2026-10-19 10:00
+              - heading "让界面清晰一点" [level=2] [ref=f61e178]
+              - paragraph [ref=f61e179]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e180]:
+                - button "前端" [ref=f61e181]
+                - button "设计" [ref=f61e182]
+            - link [ref=f61e183] [cursor=pointer]:
+              - /url: /articles/2
+              - generic [ref=f61e184]:
+                - button "开发笔记" [ref=f61e185]
+                - time [ref=f61e186]: 2026-10-19 10:00
+              - heading "设计与日常" [level=2] [ref=f61e187]
+              - paragraph [ref=f61e188]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e189]:
+                - button "前端" [ref=f61e190]
+                - button "设计" [ref=f61e191]
+            - link [ref=f61e192] [cursor=pointer]:
+              - /url: /articles/3
+              - generic [ref=f61e193]:
+                - button "开发笔记" [ref=f61e194]
+                - time [ref=f61e195]: 2026-10-19 10:00
+              - heading "新的开始" [level=2] [ref=f61e196]
+              - paragraph [ref=f61e197]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e198]:
+                - button "前端" [ref=f61e199]
+                - button "设计" [ref=f61e200]
+            - link [ref=f61e201] [cursor=pointer]:
+              - /url: /articles/4
+              - generic [ref=f61e202]:
+                - button "开发笔记" [ref=f61e203]
+                - time [ref=f61e204]: 2026-10-19 10:00
+              - heading "让界面清晰一点" [level=2] [ref=f61e205]
+              - paragraph [ref=f61e206]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e207]:
+                - button "前端" [ref=f61e208]
+                - button "设计" [ref=f61e209]
+            - link [ref=f61e210] [cursor=pointer]:
+              - /url: /articles/5
+              - generic [ref=f61e211]:
+                - button "开发笔记" [ref=f61e212]
+                - time [ref=f61e213]: 2026-10-19 10:00
+              - heading "设计与日常" [level=2] [ref=f61e214]
+              - paragraph [ref=f61e215]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e216]:
+                - button "前端" [ref=f61e217]
+                - button "设计" [ref=f61e218]
+            - link [ref=f61e219] [cursor=pointer]:
+              - /url: /articles/6
+              - generic [ref=f61e220]:
+                - button "开发笔记" [ref=f61e221]
+                - time [ref=f61e222]: 2026-10-19 10:00
+              - heading "新的开始" [level=2] [ref=f61e223]
+              - paragraph [ref=f61e224]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - generic [ref=f61e225]:
+                - button "前端" [ref=f61e226]
+                - button "设计" [ref=f61e227]
+          - generic [ref=f61e228]:
+            - button "上一页" [disabled] [ref=f61e229]
+            - generic [ref=f61e230]: 第 1 / 2 页
+            - button "下一页" [ref=f61e231] [cursor=pointer]
+        - complementary "文章筛选" [ref=f61e72]:
+          - generic [ref=f61e73]:
+            - heading "分类" [level=2] [ref=f61e74]
+            - generic [ref=f61e75]:
+              - button "全部 3" [ref=f61e76] [cursor=pointer]:
+                - generic [ref=f61e77]: 全部
+                - generic [ref=f61e78]: "3"
+              - button "开发笔记 3" [ref=f61e79] [cursor=pointer]:
+                - generic [ref=f61e80]: 开发笔记
+                - generic [ref=f61e81]: "3"
+          - generic [ref=f61e82]:
+            - heading "标签" [level=2] [ref=f61e83]
+            - generic [ref=f61e84]:
+              - button "前端 3" [ref=f61e85] [cursor=pointer]:
+                - generic [ref=f61e86]: 前端
+                - generic [ref=f61e87]: "3"
+              - button "设计 2" [ref=f61e88] [cursor=pointer]:
+                - generic [ref=f61e89]: 设计
+                - generic [ref=f61e90]: "2"
+    - navigation "全局导航" [ref=f61e91]:
+      - link "主页" [ref=f61e92] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=f61e98] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=f61e104] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=f61e111] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=f61e118] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=f61e124]:
+    - generic "Toggle devtools panel" [ref=f61e125] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f61e131] [cursor=pointer]

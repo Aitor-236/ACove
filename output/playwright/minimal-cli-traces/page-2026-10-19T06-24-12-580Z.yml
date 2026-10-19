@@ -1,0 +1,33 @@
+- generic [ref=f62e1]:
+  - generic [ref=f62e2]:
+    - main [ref=f62e4]:
+      - link [ref=f62e5] [cursor=pointer]:
+        - /url: /gallery
+      - generic [ref=f62e9]:
+        - generic [ref=f62e10]:
+          - paragraph [ref=f62e11]: PHOTO ALBUM
+          - heading "日常风景" [level=1] [ref=f62e12]
+          - paragraph [ref=f62e13]: 一些值得记录的瞬间
+        - paragraph [ref=f62e14]: 2 张图片
+      - generic [ref=f62e15]:
+        - img "日常风景中的第 1 张图片" [ref=f62e17] [cursor=pointer]
+        - img "日常风景中的第 2 张图片" [ref=f62e19] [cursor=pointer]
+    - navigation "全局导航" [ref=f62e20]:
+      - link "主页" [ref=f62e21] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=f62e27] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=f62e33] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=f62e40] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=f62e47] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=f62e53]:
+    - generic "Toggle devtools panel" [ref=f62e54] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f62e60] [cursor=pointer]
+  - generic [active] [ref=f62e65]:
+    - generic [ref=f62e67] [cursor=pointer]
+    - generic [ref=f62e71] [cursor=pointer]
+    - generic [ref=f62e75] [cursor=pointer]
+    - generic [ref=f62e79] [cursor=pointer]

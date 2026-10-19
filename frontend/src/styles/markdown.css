@@ -11,7 +11,7 @@
   /* 块与块之间的节奏、正文字号：代码块和表格共用 */
   --markdown-gap: 20px;
   --markdown-font-size: 14px;
-  --code-block-radius: 16px;
+  --code-block-radius: var(--radius-panel, 6px);
   --code-block-padding: 18px 20px;
   --code-block-padding-top: 42px;
   --code-label-top: 14px;
@@ -38,7 +38,7 @@
 
 .markdown-body h2 {
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.18);
+  border-bottom: 1px solid rgba(var(--accent-brown-rgb), 0.18);
   font-size: 22px;
 }
 
@@ -51,7 +51,7 @@
 }
 
 .markdown-body a {
-  color: var(--accent-brown, #8a5a3b);
+  color: var(--accent-brown, #9b6846);
   text-decoration: underline;
 }
 
@@ -69,7 +69,7 @@
   margin: 0 0 18px;
   padding: 12px 18px;
   border-left: 4px solid var(--accent-brown-soft, #b98a5e);
-  border-radius: 0 12px 12px 0;
+  border-radius: 0 var(--radius-control, 4px) var(--radius-control, 4px) 0;
   color: var(--text-body, rgba(74, 54, 41, 0.78));
   background: var(--panel-alt-bg, #f8f2e7);
 }
@@ -78,23 +78,23 @@
   display: block;
   max-width: 100%;
   margin: 0 auto 20px;
-  border-radius: 16px;
+  border-radius: var(--radius-panel, 6px);
 }
 
 .markdown-body hr {
   margin: 28px 0;
   border: none;
-  border-top: 1px solid rgba(138, 90, 59, 0.22);
+  border-top: 1px solid rgba(var(--accent-brown-rgb), 0.22);
 }
 
 /* ---------- 行内代码 ---------- */
 
 .markdown-body code {
   padding: 2px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-control, 4px);
   font-family: 'JetBrains Mono', Consolas, Monaco, monospace;
   font-size: var(--markdown-font-size, 14px);
-  background: rgba(138, 90, 59, 0.12);
+  background: rgba(var(--accent-brown-rgb), 0.12);
 }
 
 /* ---------- 代码块 ---------- */
@@ -103,7 +103,7 @@
   margin: 0 0 var(--markdown-gap, 20px);
   padding: var(--code-block-padding, 18px 20px);
   border: 1px solid var(--code-border, rgba(63, 46, 34, 0.4));
-  border-radius: var(--code-block-radius, 16px);
+  border-radius: var(--code-block-radius, 6px);
   overflow-x: auto;
   background: var(--code-bg, #3f2e22);
   -webkit-overflow-scrolling: touch;
@@ -144,7 +144,7 @@
 .markdown-body .code-group {
   margin: 0 0 var(--markdown-gap, 20px);
   border: 1px solid var(--code-border, rgba(63, 46, 34, 0.4));
-  border-radius: var(--code-block-radius, 16px);
+  border-radius: var(--code-block-radius, 6px);
   overflow: hidden;
   background: var(--code-bg, #3f2e22);
 }
@@ -161,7 +161,7 @@
 .markdown-body .code-group-tab {
   padding: 8px 14px;
   border: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: var(--radius-control, 4px) var(--radius-control, 4px) 0 0;
   color: var(--code-muted, rgba(246, 241, 231, 0.6));
   font-family: inherit;
   font-size: 13px;
@@ -218,7 +218,7 @@
 .markdown-body th,
 .markdown-body td {
   padding: 10px 12px;
-  border: 1px solid rgba(138, 90, 59, 0.22);
+  border: 1px solid rgba(var(--accent-brown-rgb), 0.22);
   text-align: left;
 }
 

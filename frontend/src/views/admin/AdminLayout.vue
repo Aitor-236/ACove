@@ -300,13 +300,13 @@ async function handleLogout() {
 
 <style scoped>
 .admin-shell {
-  --el-color-primary: #8a5a3b;
+  --el-color-primary: var(--accent-brown);
   --el-color-primary-light-3: #b98a5e;
   --el-color-primary-light-5: #cfa986;
   --el-color-primary-light-7: #e2cbaf;
   --el-color-primary-light-8: #ecdcc6;
   --el-color-primary-light-9: #f4ebdd;
-  --el-color-primary-dark-2: #6f4730;
+  --el-color-primary-dark-2: #80583d;
 
   display: flex;
   gap: 20px;
@@ -329,11 +329,12 @@ async function handleLogout() {
   flex-direction: column;
   align-self: flex-start;
   height: calc(100vh - 40px);
-  padding: 22px 16px 18px;
-  border: 1px solid var(--panel-border);
-  border-radius: 24px;
-  background: var(--panel-bg);
-  box-shadow: var(--panel-shadow);
+  padding: 22px 16px 18px 0;
+  border: 0;
+  border-right: 1px solid var(--panel-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .brand {
@@ -343,7 +344,7 @@ async function handleLogout() {
   align-items: center;
   gap: 12px;
   padding: 0 6px 20px;
-  border-bottom: 1px solid rgba(138, 90, 59, 0.16);
+  border-bottom: 1px solid rgba(var(--accent-brown-rgb), 0.16);
 }
 
 .brand-logo {
@@ -352,11 +353,10 @@ async function handleLogout() {
   justify-content: center;
   width: 42px;
   height: 42px;
-  border-radius: 14px;
-  color: #fdf9f2;
+  color: var(--accent-brown);
   font-size: 20px;
   font-weight: 700;
-  background: var(--accent-brown, #8a5a3b);
+  background: transparent;
 }
 
 .brand-text {
@@ -409,6 +409,19 @@ async function handleLogout() {
   overflow-y: auto;
 }
 
+.admin-nav,
+.nav-panel {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.admin-nav::-webkit-scrollbar,
+.nav-panel::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 .nav-group {
   display: flex;
   flex-direction: column;
@@ -428,28 +441,28 @@ async function handleLogout() {
   align-items: center;
   gap: 10px;
   padding: 11px 12px;
-  border-radius: 14px;
   color: var(--text-body);
   font-size: 14px;
-  background: var(--panel-alt-bg);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
+  transition: color 0.2s ease;
 }
 
 .nav-item:hover {
   color: var(--accent-brown);
-  background: #fbf6ec;
 }
 
 .nav-item.is-active {
-  color: #fdf9f2;
-  background: var(--accent-brown, #8a5a3b);
+  color: var(--accent-brown, #9b6846);
+}
+
+.nav-item:hover .nav-label,
+.nav-item.is-active .nav-label {
+  text-decoration: underline;
+  text-underline-offset: 5px;
 }
 
 .nav-item.is-disabled {
   color: rgba(74, 54, 41, 0.4);
-  background: rgba(248, 242, 231, 0.6);
   cursor: not-allowed;
 }
 
@@ -465,15 +478,13 @@ async function handleLogout() {
 
 .nav-badge {
   padding: 1px 8px;
-  border-radius: 999px;
   color: var(--text-muted);
   font-size: 11px;
-  background: #ecdec5;
 }
 
 .sidebar-footer {
   padding-top: 16px;
-  border-top: 1px solid rgba(138, 90, 59, 0.16);
+  border-top: 1px solid rgba(var(--accent-brown-rgb), 0.16);
 }
 
 .account {
@@ -490,11 +501,10 @@ async function handleLogout() {
   width: 30px;
   height: 30px;
   overflow: hidden;
-  border-radius: 10px;
-  color: #fdf9f2;
+  color: var(--accent-brown);
   font-size: 14px;
   font-weight: 600;
-  background: var(--accent-brown, #8a5a3b);
+  background: transparent;
 }
 
 .account-avatar img {
@@ -521,20 +531,19 @@ async function handleLogout() {
   flex: 1;
   padding: 8px 0;
   border: none;
-  border-radius: 12px;
+  border-radius: var(--radius-control, 4px);
   color: var(--text-body);
   font-size: 12px;
   text-align: center;
   cursor: pointer;
-  background: var(--panel-alt-bg);
-  transition:
-    color 0.2s ease,
-    background-color 0.2s ease;
+  background: transparent;
+  transition: color 0.2s ease;
 }
 
 .footer-link:hover {
   color: var(--accent-brown);
-  background: #fbf6ec;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .footer-link.is-danger:hover {
@@ -560,7 +569,8 @@ async function handleLogout() {
     flex: none;
     width: 100%;
     height: auto;
-    padding: 14px 16px;
+    padding: 14px 0;
+    border-right: 0;
   }
 
   .brand {
@@ -573,13 +583,12 @@ async function handleLogout() {
     flex-shrink: 0;
     align-items: center;
     gap: 8px;
-    padding: 9px 14px;
-    border: 1px solid var(--panel-border);
-    border-radius: 14px;
-    color: var(--text-strong);
+    padding: 9px 4px;
+    border: 0;
+    color: var(--accent-brown);
     font-size: 13px;
     font-weight: 600;
-    background: var(--panel-alt-bg);
+    background: transparent;
     cursor: pointer;
     transition:
       color 0.2s ease,
@@ -588,8 +597,9 @@ async function handleLogout() {
 
   .nav-toggle:hover,
   .nav-toggle.is-open {
-    color: var(--accent-brown);
-    background: #fbf6ec;
+    color: var(--text-strong);
+    text-decoration: underline;
+    text-underline-offset: 4px;
   }
 
   .nav-toggle-label {
@@ -619,7 +629,7 @@ async function handleLogout() {
     overflow-y: auto;
     padding: 18px 16px 16px;
     border: 1px solid var(--panel-border);
-    border-radius: 22px;
+    border-radius: var(--radius-panel, 6px);
     background: var(--panel-bg);
     box-shadow: var(--panel-shadow);
   }

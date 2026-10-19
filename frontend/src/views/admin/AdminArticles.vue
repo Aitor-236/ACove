@@ -259,7 +259,7 @@ onMounted(async () => {
       </div>
     </header>
 
-    <section class="admin-panel toolbar">
+    <section class="toolbar">
       <el-radio-group v-model="statusFilter" size="large">
         <el-radio-button value="all">全部</el-radio-button>
         <el-radio-button value="published">已发布</el-radio-button>
@@ -268,6 +268,7 @@ onMounted(async () => {
 
       <el-select
         v-model="categorySlug"
+        popper-class="admin-select-popper"
         class="category-select"
         placeholder="全部分类"
         clearable
@@ -492,15 +493,19 @@ onMounted(async () => {
   display: inline-block;
   padding: 3px 10px;
   border: none;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 12px;
   font-family: inherit;
-  background: #ecdec5;
+  background: transparent;
 }
 
 button.category-chip {
   cursor: pointer;
+}
+
+button.category-chip:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .time-text {

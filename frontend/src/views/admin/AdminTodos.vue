@@ -223,7 +223,7 @@ onMounted(loadTodos)
       </div>
     </header>
 
-    <section class="admin-panel toolbar">
+    <section class="toolbar">
       <el-radio-group v-model="statusFilter" size="large">
         <el-radio-button
           v-for="option in STATUS_FILTERS"
@@ -406,10 +406,9 @@ onMounted(loadTodos)
 .pin-chip {
   flex: 0 0 auto;
   padding: 2px 8px;
-  border-radius: 999px;
-  color: #7a5436;
+  color: var(--accent-brown);
   font-size: 11px;
-  background: #ecdec5;
+  background: transparent;
 }
 
 .todo-desc {
@@ -439,7 +438,7 @@ onMounted(loadTodos)
 
 /* 弹窗和后台面板保持同一套圆角/底色，不额外引入新风格 */
 :deep(.el-dialog) {
-  border-radius: 22px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-bg);
 }
 

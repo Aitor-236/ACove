@@ -61,11 +61,11 @@ watch(() => route.params.id, loadGallery, { immediate: true })
         返回图库
       </router-link>
 
-      <section v-if="loading" class="surface-panel detail-state" aria-live="polite">
+      <section v-if="loading" class="detail-state" aria-live="polite">
         <p>正在加载图库……</p>
       </section>
 
-      <section v-else-if="error" class="surface-panel detail-state" role="alert">
+      <section v-else-if="error" class="detail-state" role="alert">
         <p>{{ error }}</p>
         <el-button @click="loadGallery">重新加载</el-button>
       </section>
@@ -82,7 +82,7 @@ watch(() => route.params.id, loadGallery, { immediate: true })
           <p class="detail-count">{{ gallery.imageCount }} 张图片</p>
         </header>
 
-        <section v-if="!gallery.images.length" class="surface-panel detail-state">
+        <section v-if="!gallery.images.length" class="detail-state">
           <el-icon class="state-icon"><Picture /></el-icon>
           <p>这个图库暂时还没有图片。</p>
         </section>
@@ -180,7 +180,7 @@ watch(() => route.params.id, loadGallery, { immediate: true })
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  border-radius: 20px;
+  border-radius: var(--radius-panel, 6px);
   background: var(--panel-alt-bg);
   cursor: zoom-in;
   transition: border-color 0.2s ease;
@@ -232,7 +232,7 @@ watch(() => route.params.id, loadGallery, { immediate: true })
   }
 
   .gallery-image {
-    border-radius: 15px;
+    border-radius: var(--radius-panel, 6px);
   }
 }
 </style>

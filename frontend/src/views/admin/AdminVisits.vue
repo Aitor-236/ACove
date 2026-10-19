@@ -354,11 +354,9 @@ onMounted(loadData)
 }
 
 .stat-card {
-  padding: 16px 20px 18px;
-  border: 1px solid var(--panel-border);
-  border-radius: 22px;
-  background: var(--panel-bg);
-  box-shadow: var(--panel-shadow);
+  padding: 12px 8px 16px;
+  border-bottom: 1px solid var(--panel-border);
+  background: transparent;
 }
 
 .stat-label {
