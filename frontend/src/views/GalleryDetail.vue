@@ -73,7 +73,6 @@ watch(() => route.params.id, loadGallery, { immediate: true })
       <template v-else-if="gallery">
         <header class="detail-header">
           <div>
-            <p class="detail-eyebrow">PHOTO ALBUM</p>
             <h1 class="detail-title">{{ gallery.name }}</h1>
             <p v-if="gallery.description" class="detail-description">
               {{ gallery.description }}
@@ -135,14 +134,6 @@ watch(() => route.params.id, loadGallery, { immediate: true })
   justify-content: space-between;
   gap: 20px;
   padding: 0 2px 4px;
-}
-
-.detail-eyebrow {
-  margin: 0 0 9px;
-  color: var(--accent-brown);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
 }
 
 .detail-title {

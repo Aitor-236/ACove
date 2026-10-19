@@ -50,7 +50,6 @@ onMounted(loadGalleries)
     <main class="page-container gallery-container">
       <header class="gallery-header">
         <div>
-          <p class="gallery-eyebrow">COLLECTIONS</p>
           <h1 class="gallery-title">图库</h1>
         </div>
         <p v-if="!loading && !error" class="gallery-total">{{ galleries.length }} 个图库</p>
@@ -116,14 +115,6 @@ onMounted(loadGalleries)
   align-items: flex-end;
   justify-content: space-between;
   gap: 18px;
-}
-
-.gallery-eyebrow {
-  margin: 0 0 9px;
-  color: var(--accent-brown);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.2em;
 }
 
 .gallery-title {
