@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
             <strong>单页 HTML 资源包</strong>
             <p>
               上传 ZIP，根目录需要有且只有一个 <code>index.html</code>。可包含
-              CSS、图片和字体；不支持脚本、表单、iframe、外部资源或其他 HTML 页面。
+              CSS、图片和字体，支持内联静态 SVG 图标和文字；不支持脚本、表单、iframe、外部资源或其他 HTML 页面。
             </p>
             <span
               >ZIP 最大 5MB，解压后最多 20MB、100 个文件。导入后先预览，再点击「保存并公开」。</span

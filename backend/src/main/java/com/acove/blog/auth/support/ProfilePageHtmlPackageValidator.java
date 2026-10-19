@@ -3,6 +3,7 @@ package com.acove.blog.auth.support;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
@@ -17,6 +18,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+
+import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.xml.sax.InputSource;
+import org.xml.sax.helpers.DefaultHandler;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -45,6 +54,11 @@ public class ProfilePageHtmlPackageValidator {
             "(?is)@import\\s+(?:url\\(\\s*)?['\"]?([^'\")\\s;]+)['\"]?\\s*\\)?");
     private static final Pattern STYLE_BLOCK_PATTERN = Pattern.compile(
             "(?is)<style\\b[^>]*>(.*?)</style\\s*>");
+    private static final Pattern SVG_TAG_PATTERN = Pattern.compile("(?is)<(/?)svg\\b[^>]*>");
+    private static final Set<String> SVG_ELEMENTS = Set.of(
+            "svg", "g", "defs", "symbol", "use", "path", "rect", "circle", "ellipse", "line",
+            "polyline", "polygon", "text", "tspan", "textpath", "title", "desc", "style",
+            "lineargradient", "radialgradient", "stop", "clippath", "mask", "pattern", "marker");
 
     public ValidatedPackage validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
@@ -201,6 +215,10 @@ public class ProfilePageHtmlPackageValidator {
             throw new BusinessException("HTML页面不能包含脚本链接");
         }
 
+        // Validate SVG as XML (including decoded attributes), then scan the remaining HTML.
+        // Keeping SVG out of the HTML href rules permits local <use href="#icon"> references.
+        html = validateAndRemoveInlineSvg(html, assets);
+
         Matcher tagMatcher = TAG_PATTERN.matcher(html);
         while (tagMatcher.find()) {
             String tag = tagMatcher.group(1).toLowerCase(Locale.ROOT);
@@ -251,6 +269,95 @@ public class ProfilePageHtmlPackageValidator {
         Matcher styles = STYLE_BLOCK_PATTERN.matcher(html);
         while (styles.find()) {
             validateCss(styles.group(1), "index.html", assets);
+        }
+    }
+
+    private String validateAndRemoveInlineSvg(String html, Map<String, byte[]> assets) {
+        Matcher matcher = SVG_TAG_PATTERN.matcher(html);
+        StringBuilder remainingHtml = new StringBuilder();
+        int depth = 0;
+        int start = 0;
+        int copiedUntil = 0;
+        while (matcher.find()) {
+            boolean closing = !matcher.group(1).isEmpty();
+            if (closing) {
+                if (depth == 0) {
+                    throw new BusinessException("内联 SVG 标签不完整");
+                }
+                depth -= 1;
+            } else {
+                if (depth == 0) start = matcher.start();
+                if (!matcher.group().endsWith("/>")) depth += 1;
+            }
+            if (depth == 0) {
+                validateInlineSvg(html.substring(start, matcher.end()), assets);
+                remainingHtml.append(html, copiedUntil, start).append(' ');
+                copiedUntil = matcher.end();
+            }
+        }
+        if (depth != 0) {
+            throw new BusinessException("内联 SVG 标签不完整");
+        }
+        return remainingHtml.append(html, copiedUntil, html.length()).toString();
+    }
+
+    private void validateInlineSvg(String svg, Map<String, byte[]> assets) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "");
+            factory.setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "");
+            factory.setAttribute("jdk.xml.maxElementDepth", "100");
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            var builder = factory.newDocumentBuilder();
+            builder.setErrorHandler(new DefaultHandler());
+            Element root = builder.parse(new InputSource(new StringReader(svg))).getDocumentElement();
+            validateSvgNode(root, assets);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BusinessException("内联 SVG 格式无效，请使用完整的静态 SVG 标签");
+        }
+    }
+
+    private void validateSvgNode(Node node, Map<String, byte[]> assets) {
+        if (node instanceof Element element) {
+            String tag = element.getTagName().toLowerCase(Locale.ROOT);
+            String namespace = element.getNamespaceURI();
+            if (!SVG_ELEMENTS.contains(tag)
+                    || (namespace != null && !namespace.equals("http://www.w3.org/2000/svg"))) {
+                throw new BusinessException("内联 SVG 只支持静态图形和文字，不能包含脚本、动画或嵌入页面");
+            }
+            var attributes = element.getAttributes();
+            for (int i = 0; i < attributes.getLength(); i++) {
+                Node attribute = attributes.item(i);
+                String name = attribute.getNodeName().toLowerCase(Locale.ROOT);
+                String value = attribute.getNodeValue().trim();
+                if (name.startsWith("on") || name.equals("src") || name.equals("xml:base")) {
+                    throw new BusinessException("内联 SVG 不能包含事件脚本或外部资源");
+                }
+                if (name.equals("href") || name.equals("xlink:href")) {
+                    if (!value.startsWith("#") || value.length() == 1) {
+                        throw new BusinessException("内联 SVG 只能引用页内图形或文字");
+                    }
+                } else if (name.contains(":") && !name.equals("xml:space")
+                        && !(name.equals("xmlns:xlink") && value.equals("http://www.w3.org/1999/xlink"))) {
+                    throw new BusinessException("内联 SVG 包含不支持的命名空间属性");
+                }
+                validateCss(value, "index.html", assets);
+            }
+            if (tag.equals("style")) validateCss(element.getTextContent(), "index.html", assets);
+        } else if (node.getNodeType() != Node.TEXT_NODE && node.getNodeType() != Node.COMMENT_NODE
+                && node.getNodeType() != Node.CDATA_SECTION_NODE) {
+            throw new BusinessException("内联 SVG 包含不支持的内容");
+        }
+        for (Node child = node.getFirstChild(); child != null; child = child.getNextSibling()) {
+            validateSvgNode(child, assets);
         }
     }
 

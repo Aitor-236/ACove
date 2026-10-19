@@ -216,7 +216,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图 |
 | POST | `/admin/site/hero-image` | 上传首页头图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | GET | `/admin/profile-page` | 读取个人简介页配置；仅 `role=owner` 可访问 |
-| POST | `/admin/profile-page/html-package` | 上传并校验单页 HTML ZIP（multipart 字段 `file`，≤ 5MB，解压后 ≤ 20MB、最多 100 个文件）；成功后返回候选包 ID 和 `previewApiUrl`，尚未公开 |
+| POST | `/admin/profile-page/html-package` | 上传并校验单页 HTML ZIP（multipart 字段 `file`，≤ 5MB，解压后 ≤ 20MB、最多 100 个文件）；支持内联静态 SVG 图形、文字及页内引用，禁止 SVG 脚本、事件、动画、外部引用与嵌入页面；成功后返回候选包 ID 和 `previewApiUrl`，尚未公开 |
 | GET | `/admin/profile-page/html-preview/{bundleId}` | 读取候选 HTML 供站长在 sandbox iframe 的 `srcdoc` 预览；仅 `role=owner` 可访问 |
 | POST | `/admin/profile-page/save` | 保存并立即公开；body 包含 `mode`（`markdown` / `html`）、`markdownContent`、`htmlBundleId`；切换模式会保留另一模式已保存内容，仅 `role=owner` 可访问 |
 | POST | `/admin/upload/image` | 上传正文配图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif），返回 `url` 供编辑器写进 Markdown |

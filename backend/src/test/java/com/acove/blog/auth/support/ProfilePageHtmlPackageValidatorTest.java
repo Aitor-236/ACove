@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,6 +39,75 @@ class ProfilePageHtmlPackageValidatorTest {
         assertEquals("<!doctype html><html><head><link rel=\"stylesheet\" href=\"css/site.css\"></head>"
                         + "<body><img src=\"images/me.png\"><a href=\"https://example.com\">link</a></body></html>",
                 result.htmlDocument());
+    }
+
+    @Test
+    void validate_acceptsAitorProfileWithInlineSvg() throws IOException {
+        try (InputStream input = getClass().getResourceAsStream("/profile-page/aitor-profile.zip")) {
+            MockMultipartFile archive = new MockMultipartFile("file", "aitor-profile.zip", "application/zip", input);
+            ProfilePageHtmlPackageValidator.ValidatedPackage result = validator.validate(archive);
+
+            assertEquals(0, result.assets().size());
+            try (java.util.zip.ZipInputStream zip = new java.util.zip.ZipInputStream(
+                    archive.getInputStream(), StandardCharsets.UTF_8)) {
+                assertEquals("index.html", zip.getNextEntry().getName());
+                assertEquals(new String(zip.readAllBytes(), StandardCharsets.UTF_8), result.htmlDocument());
+            }
+        }
+    }
+
+    @Test
+    void validate_acceptsStaticSvgDefinitionsTextAndLocalReferences() throws IOException {
+        String html = "<html><body><svg xmlns=\"http://www.w3.org/2000/svg\" "
+                + "xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 24 24\">"
+                + "<defs><linearGradient id=\"paint\"><stop offset=\"0\" stop-color=\"red\"/>"
+                + "</linearGradient><symbol id=\"icon\"><path d=\"M0 0h24v24\"/></symbol></defs>"
+                + "<use xlink:href=\"#icon\" fill=\"url(#paint)\"/>"
+                + "<svg><text><tspan>你好</tspan></text></svg></svg><svg/>"
+                + "<a href=\"https://example.com\">link</a></body></html>";
+
+        assertEquals(html, validator.validate(archive(entry("index.html", html))).htmlDocument());
+    }
+
+    @Test
+    void validate_rejectsSvgScriptsEventsEmbeddedContentAndAnimation() throws IOException {
+        for (String content : new String[] {
+                "<script>alert(1)</script>",
+                "<foreignObject><iframe src=\"https://example.com\"/></foreignObject>",
+                "<path onload=\"alert(1)\"/>",
+                "<animate attributeName=\"href\" to=\"https://example.com\"/>",
+                "<set attributeName=\"onload\" to=\"alert(1)\"/>" }) {
+            assertRejected(archive(entry("index.html", "<svg>" + content + "</svg>")));
+        }
+    }
+
+    @Test
+    void validate_rejectsSvgExternalAndEncodedResourceReferences() throws IOException {
+        for (String content : new String[] {
+                "<use href=\"https://example.com/icons.svg#icon\"/>",
+                "<use href=\"icons.svg#icon\"/>",
+                "<use href=\"&#106;avascript:alert(1)\"/>",
+                "<use xmlns:xlink=\"http://www.w3.org/1999/xlink\" xlink:href=\"//example.com/icon\"/>",
+                "<image href=\"https://example.com/image.png\"/>",
+                "<path fill=\"url(https://example.com/paint.svg#paint)\"/>",
+                "<path style=\"fill:url(&#104;ttps://example.com/paint.svg#paint)\"/>",
+                "<style>@import 'https://example.com/style.css';</style>",
+                "<g xml:base=\"https://example.com\"><use href=\"#icon\"/></g>",
+                "<path xmlns=\"http://www.w3.org/1999/xhtml\"/>" }) {
+            assertRejected(archive(entry("index.html", "<svg>" + content + "</svg>")));
+        }
+    }
+
+    @Test
+    void validate_rejectsMalformedSvgAndXmlDirectives() throws IOException {
+        for (String html : new String[] {
+                "<svg><path></svg>", "<svg><path/>", "</svg>",
+                "<svg><!DOCTYPE svg [<!ENTITY payload SYSTEM 'file:///etc/passwd'>]>"
+                        + "<text>&payload;</text></svg>",
+                "<svg><?xml-stylesheet href=\"https://example.com/style.css\"?></svg>",
+                "<svg>" + "<g>".repeat(101) + "</g>".repeat(101) + "</svg>" }) {
+            assertRejected(archive(entry("index.html", html)));
+        }
     }
 
     @Test
