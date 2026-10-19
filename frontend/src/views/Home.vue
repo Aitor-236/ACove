@@ -20,6 +20,11 @@ interface ArticleItem {
   readingMinutes: number
 }
 
+/** 图库列表摘要（来自 GET /gallery/list） */
+interface GallerySummary {
+  imageCount: number
+}
+
 function formatDate(value?: string | null) {
   // 和详情页保持同样的粒度，卡片上多出的时分不影响现有布局
   return value ? value.replace('T', ' ').slice(0, 16) : ''
@@ -71,7 +76,7 @@ const TODO_GROUPS: { status: TodoStatus; label: string }[] = [
 const latestArticles = ref<ArticleItem[]>([])
 /** 已发布文章总数（来自 GET /article/list 的 total） */
 const articleTotal = ref(0)
-/** 画作数量：画廊页目前用页面内静态数组且为空，后端接口就绪后替换这里 */
+/** 图片总数：汇总公开图库返回的各图库图片数 */
 const artworkTotal = ref(0)
 const articlesLoading = ref(true)
 const articlesError = ref('')
@@ -184,8 +189,26 @@ async function loadTodos() {
   }
 }
 
+async function loadArtworkTotal() {
+  try {
+    const res = (await request.get('/gallery/list')) as { data: GallerySummary[] }
+    artworkTotal.value = (res.data ?? []).reduce(
+      (total, gallery) => total + (Number(gallery.imageCount) || 0),
+      0
+    )
+  } catch {
+    // 图库数量拿不到时保留默认值，不影响首页其它内容
+  }
+}
+
 onMounted(async () => {
-  await Promise.all([loadHomeArticles(), loadSiteOwner(), loadSiteSettings(), loadTodos()])
+  await Promise.all([
+    loadHomeArticles(),
+    loadSiteOwner(),
+    loadSiteSettings(),
+    loadTodos(),
+    loadArtworkTotal()
+  ])
   // 文章渲染完成后恢复滚动位置；内容高度可能还要再稳定一两帧，
  await nextTick()
   // 所以设置后校验一次，没到位就再等一帧重试，避免被截断到较小的值
