@@ -30,10 +30,13 @@ const profile = ref<ProfileInfo | null>(null)
 
 const usernameFormRef = ref<FormInstance>()
 const emailFormRef = ref<FormInstance>()
+const passwordFormRef = ref<FormInstance>()
 const usernameForm = ref({ username: '' })
 const emailForm = ref({ email: '' })
+const passwordForm = ref({ currentPassword: '', newPassword: '', confirmPassword: '' })
 const savingUsername = ref(false)
 const savingEmail = ref(false)
+const savingPassword = ref(false)
 
 const fileInputRef = ref<HTMLInputElement | null>(null)
 /** 已经选好但还没上传的文件，以及它的本地预览地址 */
@@ -108,6 +111,32 @@ const emailRules: FormRules<typeof emailForm> = {
   ]
 }
 
+const passwordRules: FormRules<typeof passwordForm> = {
+  currentPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        if (new TextEncoder().encode(value ?? '').length > 72) {
+          callback(new Error('新密码不能超过 72 个 UTF-8 字节'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (_rule, value, callback) => {
+        callback(value === passwordForm.value.newPassword ? undefined : new Error('两次输入的新密码不一致'))
+      },
+      trigger: 'blur'
+    }
+  ]
+}
+
 async function loadProfile() {
   loading.value = true
   try {
@@ -177,6 +206,26 @@ async function saveEmail() {
     // 格式或重复问题由 request 拦截器弹出提示，保留输入方便修改
   } finally {
     savingEmail.value = false
+  }
+}
+
+async function changePassword() {
+  const valid = await passwordFormRef.value?.validate().catch(() => false)
+  if (!valid) return
+
+  savingPassword.value = true
+  try {
+    await request.post('/admin/user/password', {
+      currentPassword: passwordForm.value.currentPassword,
+      newPassword: passwordForm.value.newPassword
+    })
+    passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
+    passwordFormRef.value?.clearValidate()
+    ElMessage.success('密码已修改')
+  } catch {
+    // 旧密码不正确等业务失败由 request 拦截器提示，保留输入便于修正
+  } finally {
+    savingPassword.value = false
   }
 }
 
@@ -546,6 +595,56 @@ onBeforeUnmount(() => {
       <div class="card-footer">
         <el-button type="primary" :loading="savingEmail" @click="saveEmail">
           保存邮箱地址
+        </el-button>
+      </div>
+    </section>
+
+    <section v-loading="loading" class="admin-panel profile-card">
+      <div class="card-head">
+        <h2 class="card-title">修改密码</h2>
+      </div>
+
+      <el-form
+        ref="passwordFormRef"
+        class="profile-form"
+        :model="passwordForm"
+        :rules="passwordRules"
+        label-position="top"
+        @submit.prevent
+      >
+        <el-form-item label="当前密码" prop="currentPassword">
+          <el-input
+            v-model="passwordForm.currentPassword"
+            type="password"
+            autocomplete="current-password"
+            show-password
+            placeholder="请输入当前密码"
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="passwordForm.newPassword"
+            type="password"
+            autocomplete="new-password"
+            show-password
+            placeholder="请输入新密码"
+          />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input
+            v-model="passwordForm.confirmPassword"
+            type="password"
+            autocomplete="new-password"
+            show-password
+            placeholder="请再次输入新密码"
+            @keyup.enter="changePassword"
+          />
+        </el-form-item>
+      </el-form>
+
+      <div class="card-footer">
+        <el-button type="primary" :loading="savingPassword" @click="changePassword">
+          修改密码
         </el-button>
       </div>
     </section>

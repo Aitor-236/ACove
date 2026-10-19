@@ -4,6 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.acove.blog.auth.dto.UserProfileDTO;
 import com.acove.blog.auth.dto.UserProfileVO;
+import com.acove.blog.auth.dto.ChangePasswordDTO;
 
 /**
  * 后台「个人管理」：维护当前登录用户自己的用户名、邮箱和头像。
@@ -19,4 +20,7 @@ public interface AdminUserService {
 
     /** 保存上传的头像图片并写回数据库，返回更新后的资料。 */
     UserProfileVO updateAvatar(Long userId, MultipartFile file);
+
+    /** 校验当前密码后更新当前登录用户的 BCrypt 密码。 */
+    void changePassword(Long userId, ChangePasswordDTO changePasswordDTO);
 }

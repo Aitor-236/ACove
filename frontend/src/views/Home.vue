@@ -31,9 +31,10 @@ interface SiteOwner {
   avatar: string
 }
 
-/** 站点设置（来自 GET /site/settings）：网站名、首页头图、首页中间的文字 */
+/** 站点设置（来自 GET /site/settings）：网站名、图标、首页头图与首页中间的文字 */
 interface SiteSettings {
   siteName: string
+  siteIcon: string
   /** 头图相对地址，空字符串表示还没设置 */
   heroImage: string
   heroText: string

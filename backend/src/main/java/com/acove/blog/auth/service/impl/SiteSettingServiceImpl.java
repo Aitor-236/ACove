@@ -33,22 +33,26 @@ public class SiteSettingServiceImpl implements SiteSettingService {
     /** 还没配置过网站名时的兜底值，和 db/migration/V1__baseline.sql 里的默认值保持一致 */
     private static final String DEFAULT_SITE_NAME = "ACove";
 
-    /** 头图在数据库里存的是相对地址，统一以这个前缀开头 */
+    /** 上传资源在数据库里存相对地址，统一以这个前缀开头 */
     private static final String UPLOAD_URL_PREFIX = "/uploads/";
 
-    /** 头图落盘的子目录，和头像（avatar）/ 正文配图（article）分开 */
+    /** 头图和站点图标分别落在独立目录。 */
     private static final String HERO_IMAGE_DIR = "hero";
+    private static final String FAVICON_DIR = "favicon";
 
-    /** 各字段长度上限，和 db/migration/V1__baseline.sql 里的列定义保持一致 */
+    /** 各字段长度上限，与对应的 Flyway 列定义保持一致。 */
     private static final int SITE_NAME_MAX_LENGTH = 50;
     private static final int HERO_TEXT_MAX_LENGTH = 200;
     private static final int HERO_IMAGE_MAX_LENGTH = 255;
+    private static final int SITE_ICON_MAX_LENGTH = 255;
 
     /** 头图文件大小上限，和 application.yml 里的 multipart 限制保持一致 */
     private static final long HERO_IMAGE_MAX_SIZE = 5L * 1024 * 1024;
+    private static final long FAVICON_MAX_SIZE = 1024L * 1024;
 
     /** 允许的头图扩展名，落盘文件名沿用其中之一 */
     private static final Set<String> IMAGE_EXTENSIONS = Set.of("png", "jpg", "jpeg", "webp", "gif");
+    private static final Set<String> FAVICON_EXTENSIONS = Set.of("ico", "png");
 
     private final SiteSettingMapper siteSettingMapper;
 
@@ -93,6 +97,14 @@ public class SiteSettingServiceImpl implements SiteSettingService {
             current.setHeroImage(heroImage);
         }
 
+        if (settingDTO.getSiteIcon() != null) {
+            String siteIcon = settingDTO.getSiteIcon().trim();
+            if (!siteIcon.isEmpty()) {
+                throw new BusinessException("站点图标请通过上传接口设置");
+            }
+            current.setSiteIcon("");
+        }
+
         return save(current);
     }
 
@@ -122,6 +134,33 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         return save(current);
     }
 
+    @Override
+    @Transactional
+    public SiteSettingVO updateSiteIcon(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException("请选择要上传的站点图标");
+        }
+        if (file.getSize() > FAVICON_MAX_SIZE) {
+            throw new BusinessException("站点图标不能超过 1MB");
+        }
+
+        String extension = resolveFaviconExtension(file);
+        String filename = UploadFileNaming.create(UploadFileNaming.Module.FAVICON, extension);
+        String siteIcon = UPLOAD_URL_PREFIX + FAVICON_DIR + "/" + filename;
+        requireWithinLength(siteIcon, SITE_ICON_MAX_LENGTH, "站点图标地址");
+        Path faviconDir = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(FAVICON_DIR);
+        try {
+            Files.createDirectories(faviconDir);
+            file.transferTo(faviconDir.resolve(filename));
+        } catch (IOException | IllegalStateException ex) {
+            throw new BusinessException(500, "站点图标保存失败，请稍后重试");
+        }
+
+        SiteSetting current = currentOrDefault();
+        current.setSiteIcon(siteIcon);
+        return save(current);
+    }
+
     /**
      * 取当前配置行；数据库里还没有（没跑过初始化脚本）时按默认值建一份内存对象。
      */
@@ -134,6 +173,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         created.setId(SETTING_ID);
         created.setSiteName(DEFAULT_SITE_NAME);
         created.setHeroImage("");
+        created.setSiteIcon("");
         created.setHeroText("");
         return created;
     }
@@ -148,6 +188,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         update.setId(SETTING_ID);
         update.setSiteName(current.getSiteName());
         update.setHeroImage(current.getHeroImage() == null ? "" : current.getHeroImage());
+        update.setSiteIcon(current.getSiteIcon() == null ? "" : current.getSiteIcon());
         update.setHeroText(current.getHeroText() == null ? "" : current.getHeroText());
 
         if (siteSettingMapper.selectById(SETTING_ID) != null) {
@@ -160,12 +201,13 @@ public class SiteSettingServiceImpl implements SiteSettingService {
 
     private SiteSettingVO toVO(SiteSetting setting) {
         if (setting == null) {
-            return new SiteSettingVO(DEFAULT_SITE_NAME, "", "");
+            return new SiteSettingVO(DEFAULT_SITE_NAME, "", "", "");
         }
         String siteName = StringUtils.hasText(setting.getSiteName()) ? setting.getSiteName() : DEFAULT_SITE_NAME;
         return new SiteSettingVO(siteName,
                 setting.getHeroImage() == null ? "" : setting.getHeroImage(),
-                setting.getHeroText() == null ? "" : setting.getHeroText());
+                setting.getHeroText() == null ? "" : setting.getHeroText(),
+                setting.getSiteIcon() == null ? "" : setting.getSiteIcon());
     }
 
     /**
@@ -190,6 +232,59 @@ public class SiteSettingServiceImpl implements SiteSettingService {
             case "image/gif" -> "gif";
             default -> throw new BusinessException("头图仅支持 png / jpg / webp / gif 图片");
         };
+    }
+
+    /** ICO 没有统一的浏览器 MIME 值，因此扩展名与文件签名共同决定上传格式。 */
+    private String resolveFaviconExtension(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String extension = null;
+        if (StringUtils.hasText(originalFilename) && originalFilename.lastIndexOf('.') >= 0) {
+            String candidate = originalFilename.substring(originalFilename.lastIndexOf('.') + 1)
+                    .toLowerCase(Locale.ROOT);
+            if (FAVICON_EXTENSIONS.contains(candidate)) {
+                extension = candidate;
+            }
+        }
+        if (extension == null) {
+            extension = switch (String.valueOf(file.getContentType()).toLowerCase(Locale.ROOT)) {
+                case "image/png" -> "png";
+                case "image/x-icon", "image/vnd.microsoft.icon" -> "ico";
+                default -> throw new BusinessException("站点图标仅支持 ICO 或 PNG 图片");
+            };
+        }
+
+        byte[] bytes;
+        try {
+            bytes = file.getBytes();
+        } catch (IOException ex) {
+            throw new BusinessException("站点图标读取失败，请重新选择文件");
+        }
+        if ("png".equals(extension) && !hasPngSignature(bytes)) {
+            throw new BusinessException("所选文件不是有效的 PNG 图片");
+        }
+        if ("ico".equals(extension) && !hasIcoSignature(bytes)) {
+            throw new BusinessException("所选文件不是有效的 ICO 图标");
+        }
+        return extension;
+    }
+
+    private boolean hasPngSignature(byte[] bytes) {
+        byte[] signature = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
+        if (bytes.length < signature.length) {
+            return false;
+        }
+        for (int index = 0; index < signature.length; index++) {
+            if (bytes[index] != signature[index]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasIcoSignature(byte[] bytes) {
+        return bytes.length >= 6 && bytes[0] == 0 && bytes[1] == 0
+                && bytes[2] == 1 && bytes[3] == 0
+                && (bytes[4] != 0 || bytes[5] != 0);
     }
 
     private void requireWithinLength(String value, int maxLength, String field) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import DockNav from '@/components/DockNav.vue'
 import request from '@/utils/request'
@@ -9,19 +9,33 @@ const route = useRoute()
 // 登录页和后台管理都有独立布局，不显示前台底部导航
 const showDock = computed(() => route.path !== '/login' && !route.path.startsWith('/admin'))
 
-/**
- * 网站名由后台「网站设置」维护，进站时取一次写进浏览器标题；
- * 拿不到就保留 index.html 里的默认标题。
- */
-onMounted(async () => {
+/** 网站名与站点图标由后台「网站设置」维护。 */
+async function loadSiteSettings() {
   try {
-    const res = (await request.get('/site/settings')) as { data: { siteName: string } }
+    const res = (await request.get('/site/settings')) as {
+      data: { siteName: string; siteIcon: string }
+    }
     if (res.data.siteName) {
       document.title = res.data.siteName
     }
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]')
+    if (favicon) {
+      const iconUrl = res.data.siteIcon ? `/api${res.data.siteIcon}` : '/favicon.ico'
+      favicon.href = iconUrl
+      favicon.type = iconUrl.toLowerCase().endsWith('.png') ? 'image/png' : 'image/x-icon'
+    }
   } catch {
-    // 拿不到站点设置就用默认标题
+    // 拿不到站点设置就保留 index.html 里的标题和默认图标
   }
+}
+
+onMounted(() => {
+  void loadSiteSettings()
+  window.addEventListener('site-settings-updated', loadSiteSettings)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('site-settings-updated', loadSiteSettings)
 })
 </script>
 

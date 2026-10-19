@@ -18,4 +18,7 @@ public class SiteSettingVO {
 
     /** 首页中间的文字；空字符串时前台回退成网站名 */
     private String heroText;
+
+    /** 站点图标相对地址，形如 /uploads/favicon/xxx.png；空字符串表示使用默认图标 */
+    private String siteIcon;
 }

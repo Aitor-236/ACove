@@ -3,7 +3,7 @@
 一个前后端分离、可直接自托管的博客系统：前台展示文章、图库和个人简介，后台提供文章、分类、标签与图库的可视化管理。仓库本身不带任何个人化配置，克隆下来按「生产部署」填好 `.env` 就能跑成你自己的站点。
 
 - 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介；首页的网站名、头图和中间文字都可在后台改
-- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、图库与图片管理、个人管理、网站设置（网站名 / 首页头图 / 首页文字）、访问统计
+- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、图库与图片管理、个人管理（含修改密码）、网站设置（网站名 / 站点图标 / 首页头图 / 首页文字）、访问统计
 - 鉴权：JWT（HS256）登录态，密码以 BCrypt 哈希存储，不存明文
 
 ## 技术栈
@@ -80,7 +80,7 @@ ACove/
 - **本地开发**：按下面的「启动后端」配好 `application-local.yml`，然后 `./mvnw spring-boot:run`，启动过程中 Flyway 会把表建好。
 - **老库升级**：先 `./deploy.sh backup`；本次升级到 V7 前，必须按下文检查并人工处理重复邮箱，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
 - **查看状态**：`./deploy.sh info` 打印已应用 / 未应用的迁移版本。
-- **改表结构**：当前迁移到 V7（邮箱唯一约束），新增表结构从 `V8__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
+- **改表结构**：当前迁移到 V8（增加站点图标设置），新增表结构从 `V9__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
 
 #### V7 升级前：检查重复邮箱
 
@@ -164,7 +164,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `jwt.secret-key` | 同上 | HS256 签名密钥，生产环境务必替换 |
 | `jwt.expire-time` | 同上 | token 有效期（毫秒），模板默认 24 小时 |
 | `server.port` | `backend/src/main/resources/application.yml` | 后端端口，默认 8080 |
-| `blog.upload.dir` | 同上 | 上传文件（头像、正文配图、首页头图、图库图片）的落盘目录，默认 `./uploads`；图库图片存入 `gallery/` 子目录；容器里是 `/app/uploads`（数据卷） |
+| `blog.upload.dir` | 同上 | 上传文件（头像、正文配图、站点图标、首页头图、图库图片）的落盘目录，默认 `./uploads`；图库图片存入 `gallery/` 子目录；容器里是 `/app/uploads`（数据卷） |
 | `/api` 代理目标 | `frontend/vite.config.ts`（开发）、`frontend/nginx.conf.template`（Docker）、`frontend/nginx.host.conf.example`（主机） | 后端地址分别为 `http://localhost:8080`、`http://backend:8080`、`http://127.0.0.1:8080` |
 | `MYSQL_ROOT_PASSWORD`、`BLOG_JWT_SECRET`、`BLOG_HTTP_PORT` 等 | 仓库根 `.env`（模板 `.env.example`） | 只影响 Docker 部署，`./deploy.sh init` 会自动填入随机密钥 |
 
@@ -183,7 +183,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/category/list` | 分类列表，`articleCount` 只统计已发布文章 |
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
-| GET | `/site/settings` | 前台站点设置：网站名、首页头图、首页中间的文字（匿名可访问） |
+| GET | `/site/settings` | 前台站点设置：网站名、站点图标、首页头图、首页中间的文字（匿名可访问） |
 | GET | `/site/profile-page` | 匿名读取个人简介页当前模式、Markdown 正文（Markdown 模式下附站长邮箱）或已发布 HTML 文档地址 |
 | GET | `/site/profile-page/html/{bundleId}` | 匿名读取当前已发布 HTML 文档；响应附 CSP sandbox 策略，候选包和已替换资源包不可通过此接口读取 |
 | GET | `/todo/list` | Todo 清单（前台只读）：一次性返回全部，置顶那条最先，其余按创建时间新 → 旧 |
@@ -191,7 +191,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/gallery/list` | 图库列表：返回图库名称、简介、封面地址和图片数量；封面取排序第一张，空图库封面为空 |
 | GET | `/gallery/detail/{id}` | 图库详情：返回图库信息和按自定义顺序排列的图片 |
 | POST | `/visit/report` | 前台页面浏览上报，每次切换页面调一次；访客标识由服务端 Cookie（`blog_vid`）维护，前端不用传参 |
-| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、首页头图 `/uploads/hero/`、图库图片 `/uploads/gallery/`、个人简介页资源 `/uploads/profile-page/`），由后端直接托管；`<img>` 请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
+| GET | `/uploads/**` | 上传的静态资源（头像 `/uploads/avatar/`、正文配图 `/uploads/article/`、站点图标 `/uploads/favicon/`、首页头图 `/uploads/hero/`、图库图片 `/uploads/gallery/`、个人简介页资源 `/uploads/profile-page/`），由后端直接托管；图片请求不带 token，所以这条路径在 JwtInterceptor 白名单里 |
 
 后台接口（需要 `Authorization: Bearer <token>`）：
 
@@ -212,8 +212,10 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/admin/user/profile` | 个人管理：当前登录用户的用户名 / 邮箱 / 头像 / 角色 `role` |
 | POST | `/admin/user/profile/update` | 修改用户名或邮箱，只更新传入的字段，重名或格式错误返回 400 |
 | POST | `/admin/user/avatar` | 上传头像（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
-| GET | `/admin/site/settings` | 网站设置：读取网站名 / 首页头图 / 首页中间的文字 |
-| POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图 |
+| POST | `/admin/user/password` | 修改当前账号密码，body 为 `currentPassword` / `newPassword`；旧密码错误或新密码为空返回 400 |
+| GET | `/admin/site/settings` | 网站设置：读取网站名 / 站点图标 / 首页头图 / 首页中间的文字 |
+| POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图，`siteIcon` 传空串恢复默认图标，新图标通过上传接口设置 |
+| POST | `/admin/site/favicon` | 上传站点图标（multipart，字段名 `file`，≤ 1MB，ICO / PNG） |
 | POST | `/admin/site/hero-image` | 上传首页头图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | GET | `/admin/profile-page` | 读取个人简介页配置；仅 `role=owner` 可访问 |
 | POST | `/admin/profile-page/html-package` | 上传并校验单页 HTML ZIP（multipart 字段 `file`，≤ 5MB，解压后 ≤ 20MB、最多 100 个文件）；支持内联静态 SVG 图形、文字及页内引用，禁止 SVG 脚本、事件、动画、外部引用与嵌入页面；成功后返回候选包 ID 和 `previewApiUrl`，尚未公开 |
@@ -254,7 +256,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `article_tag` | 文章与标签的关联表，复合主键，级联删除 |
 | `visit_daily_stat` | 每日访问汇总：`stat_date`（主键）/ `pv` / `uv`，一天一行，后台统计页的数据来源 |
 | `visit_visitor` | 每日访客去重：`stat_date` + `visitor_key`（唯一键），访客当天第一次出现才让 UV 加一；`visitor_key` 是 Cookie 里 IP + User-Agent 的哈希，不存原始 IP |
-| `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `hero_text`（首页中间文字，空表示回退成网站名） |
+| `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `site_icon`（站点图标相对地址，空表示使用默认图标）/ `hero_text`（首页中间文字，空表示回退成网站名） |
 | `todo` | Todo 清单（站长个人一份）：`title` / `description`（可空）/ `status`(todo-酝酿中, doing-打磨中, done-已完成) / `is_pinned` / `created_at` / `updated_at`；辅助列 `pinned_flag` 是生成列，配合唯一索引 `uk_todo_pinned` 保证全表最多一条 `is_pinned = 1`（迁移脚本 `V2__create_todo.sql`） |
 | `open_source_project` | 开源项目：`name` / `url`（项目地址）/ `description`（介绍）/ `update_log`（日志·最新更新内容）/ `next_step`（下一步·todo）/ `preview_image`（预览图相对地址，**暂未启用**，默认空串、前台不展示）/ `created_at` / `updated_at`（迁移脚本 `V3__create_open_source_project.sql`） |
 | `home_article` | 首页展示文章：`article_id`（主键，关联 `article.id`，级联删除）/ `sort_order`（越小越靠前）/ `created_at`；后台「首页展示」页维护，前台 `GET /article/home` 按它排序（迁移脚本 `V4__create_home_article.sql`） |
@@ -354,7 +356,7 @@ BCrypt 哈希在宿主机生成（依赖 `python3` + `bcrypt` 或 `apache2-utils
 
 #### 4. 数据、备份与恢复
 
-- 数据都在两个命名卷里：`acove_mysql-data`（数据库）和 `acove_uploads-data`（头像、正文配图、首页头图）。`./deploy.sh down` 只删容器不动卷；只有 `docker compose down -v` 才会连数据一起删。
+- 数据都在两个命名卷里：`acove_mysql-data`（数据库）和 `acove_uploads-data`（头像、正文配图、站点图标、首页头图）。`./deploy.sh down` 只删容器不动卷；只有 `docker compose down -v` 才会连数据一起删。
 - `./deploy.sh update` 重建容器（代码更新）不会影响卷，文章、账号、图片都还在。
 - `./deploy.sh backup` 在 `backups/<时间戳>/` 生成 `blog_db.sql`（整库导出）和 `uploads.tar.gz`，该目录已被 gitignore。
 
@@ -436,9 +438,9 @@ docker compose exec -T mysql sh -c \
 - 开源项目的预览图（`preview_image` 列）**暂时留空、不启用**：表里先建好列，前台和后台都还没给它留位置，等后期做预览图上传时再补 UI。
 - `sys_user.role` 决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。个人简介页后台接口额外要求角色值严格等于 `owner`；其他后台功能仍按各自现有登录校验处理。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
-- 头像、正文配图、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
-- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表；后续改表从 `V7__xxx.sql` 开始。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- 头像、正文配图、站点图标、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/favicon/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
-- 网站名 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；字段长度等约束与 `V1__baseline.sql` 的列定义保持一致。
+- 网站名 / 站点图标 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增。
 - 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。
 - 文章编辑页是「先看后改」：打开已有文章先是只读的渲染预览（正文走前台那套 Markdown），点右上角「编辑」才进入可写状态。**编辑态下只有标题 / 摘要 / 正文会自动保存**（停下来约 1s 防抖落库，失败自动重试 2 次，顶部显示「正在保存 / 已保存 15:32 / 保存失败 · 重试」），**分类和标签不自动保存**，改完要点「保存」；「完成」回到预览时会先把待保存的文本 flush 掉。首页展示页同理：增删 / 拖拽约 300ms 后自动整体保存，没有保存按钮。两处共用 `frontend/src/composables/useAutoSave.ts`（防抖、单飞串行、重试、离开前 flush），自动保存的请求带 `silent: true`，失败不弹 toast。

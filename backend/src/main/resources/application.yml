@@ -24,7 +24,7 @@ spring:
 server:
     port: 8080
 
-# 上传文件（当前只有头像）的落盘目录，相对服务运行目录；通过 /uploads/** 只读对外暴露。
+# 上传文件的落盘目录，相对服务运行目录；通过 /uploads/** 只读对外暴露。
 blog:
     upload:
         dir: ./uploads

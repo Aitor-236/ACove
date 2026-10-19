@@ -16,7 +16,7 @@ import com.acove.blog.common.result.Result;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 后台「网站设置」接口：网站名、首页头图、首页中间的文字。
+ * 后台「网站设置」接口：网站名、首页头图、站点图标、首页中间的文字。
  * 路径在 /admin/** 下，不要加进 JwtInterceptor 的白名单。
  */
 @RestController
@@ -42,5 +42,11 @@ public class AdminSiteController {
     @PostMapping("/hero-image")
     public Result<SiteSettingVO> uploadHeroImage(@RequestPart("file") MultipartFile file) {
         return Result.success(siteSettingService.updateHeroImage(file));
+    }
+
+    /** 上传站点图标，表单字段名固定为 file。 */
+    @PostMapping("/favicon")
+    public Result<SiteSettingVO> uploadFavicon(@RequestPart("file") MultipartFile file) {
+        return Result.success(siteSettingService.updateSiteIcon(file));
     }
 }

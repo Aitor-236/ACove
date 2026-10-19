@@ -29,7 +29,7 @@ public class SiteController {
         return Result.success(siteProfileService.getSiteOwner());
     }
 
-    /** 前台要展示的站点设置：网站名、首页头图、首页中间的文字。 */
+    /** 前台要展示的站点设置：网站名、站点图标、首页头图、首页中间的文字。 */
     @GetMapping("/settings")
     public Result<SiteSettingVO> settings() {
         return Result.success(siteSettingService.getSettings());

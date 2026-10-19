@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.acove.blog.auth.dto.UserProfileDTO;
 import com.acove.blog.auth.dto.UserProfileVO;
+import com.acove.blog.auth.dto.ChangePasswordDTO;
 import com.acove.blog.auth.service.AdminUserService;
 import com.acove.blog.common.interceptor.JwtInterceptor;
 import com.acove.blog.common.result.Result;
@@ -49,5 +50,14 @@ public class AdminUserController {
             @RequestAttribute(name = JwtInterceptor.REQUEST_ATTRIBUTE_USER_ID, required = false) Long userId,
             @RequestPart("file") MultipartFile file) {
         return Result.success(adminUserService.updateAvatar(userId, file));
+    }
+
+    /** 修改当前登录用户的密码；用户 ID 只从 token 获取。 */
+    @PostMapping("/password")
+    public Result<Void> changePassword(
+            @RequestAttribute(name = JwtInterceptor.REQUEST_ATTRIBUTE_USER_ID, required = false) Long userId,
+            @RequestBody ChangePasswordDTO changePasswordDTO) {
+        adminUserService.changePassword(userId, changePasswordDTO);
+        return Result.success();
     }
 }

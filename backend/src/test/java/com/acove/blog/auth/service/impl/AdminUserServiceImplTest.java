@@ -19,7 +19,9 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.acove.blog.auth.dto.ChangePasswordDTO;
 import com.acove.blog.auth.dto.UserProfileDTO;
 import com.acove.blog.auth.entity.SysUser;
 import com.acove.blog.auth.mapper.SysUserMapper;
@@ -27,16 +29,19 @@ import com.acove.blog.common.exception.BusinessException;
 
 class AdminUserServiceImplTest {
     private SysUserMapper mapper;
+    private PasswordEncoder passwordEncoder;
     private AdminUserServiceImpl service;
 
     @BeforeEach
     void setUp() {
         mapper = mock(SysUserMapper.class);
-        service = new AdminUserServiceImpl(mapper);
+        passwordEncoder = mock(PasswordEncoder.class);
+        service = new AdminUserServiceImpl(mapper, passwordEncoder);
         SysUser user = new SysUser();
         user.setId(7L);
         user.setUsername("alice");
         user.setEmail("alice@example.com");
+        user.setPassword("old-hash");
         when(mapper.selectById(7L)).thenReturn(user);
         when(mapper.selectCount(any())).thenReturn(0L);
     }
@@ -81,6 +86,46 @@ class AdminUserServiceImplTest {
     }
 
     @Test
+    void changePasswordVerifiesCurrentPasswordAndStoresOnlyEncodedValue() {
+        when(passwordEncoder.matches("current", "old-hash")).thenReturn(true);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+
+        service.changePassword(7L, passwordRequest("current", "new-password"));
+
+        ArgumentCaptor<SysUser> update = ArgumentCaptor.forClass(SysUser.class);
+        verify(mapper).updateById(update.capture());
+        assertEquals(7L, update.getValue().getId());
+        assertEquals("new-hash", update.getValue().getPassword());
+        assertNull(update.getValue().getUsername());
+        assertNull(update.getValue().getRole());
+    }
+
+    @Test
+    void changePasswordRejectsWrongCurrentPasswordWithoutWriting() {
+        when(passwordEncoder.matches("wrong", "old-hash")).thenReturn(false);
+
+        var error = assertThrows(BusinessException.class,
+                () -> service.changePassword(7L, passwordRequest("wrong", "new-password")));
+
+        assertEquals("当前密码不正确", error.getMessage());
+        verify(mapper, never()).updateById(any(SysUser.class));
+        verify(passwordEncoder, never()).encode(any());
+    }
+
+    @Test
+    void changePasswordRejectsEmptyAndOverlongPasswords() {
+        var empty = assertThrows(BusinessException.class,
+                () -> service.changePassword(7L, passwordRequest("current", "")));
+        var overlong = assertThrows(BusinessException.class,
+                () -> service.changePassword(7L, passwordRequest("current", "界".repeat(25))));
+
+        assertEquals("请输入新密码", empty.getMessage());
+        assertEquals("新密码不能超过 72 个 UTF-8 字节", overlong.getMessage());
+        verify(passwordEncoder, never()).matches(any(), any());
+        verify(mapper, never()).updateById(any(SysUser.class));
+    }
+
+    @Test
     void unknownUniqueKeyIsNotMislabeledAsEmailConflict() {
         DuplicateKeyException failure = duplicate("another_key", 1062);
         when(mapper.updateById(any(SysUser.class))).thenThrow(failure);
@@ -119,6 +164,13 @@ class AdminUserServiceImplTest {
         } else {
             dto.setUsername("new-name");
         }
+        return dto;
+    }
+
+    private ChangePasswordDTO passwordRequest(String currentPassword, String newPassword) {
+        ChangePasswordDTO dto = new ChangePasswordDTO();
+        dto.setCurrentPassword(currentPassword);
+        dto.setNewPassword(newPassword);
         return dto;
     }
 }

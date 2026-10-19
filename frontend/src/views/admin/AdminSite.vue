@@ -9,12 +9,15 @@ interface SiteSetting {
   /** 头图相对地址，空字符串表示还没设置 */
   heroImage: string
   heroText: string
+  /** 站点图标相对地址，空字符串表示使用默认图标 */
+  siteIcon: string
 }
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 
 /** 原图体积上限：再大就不在浏览器里解码了，避免页面卡死（后端 multipart 上限 5MB，裁剪后的图远小于它） */
 const SOURCE_MAX_SIZE = 20 * 1024 * 1024
+const SITE_ICON_MAX_SIZE = 1024 * 1024
 /** 裁剪取景框（16:9 横图，和首页头图与后台缩略图一致）与导出图宽度 */
 const CROP_VIEW_WIDTH = 320
 const CROP_VIEW_HEIGHT = 180
@@ -24,7 +27,7 @@ const CROP_MAX_SCALE = 4
 const loading = ref(false)
 /** 设置没读出来时不给空表单，直接提示重新加载，免得看着像"值没了" */
 const loadError = ref(false)
-const settings = ref<SiteSetting>({ siteName: '', heroImage: '', heroText: '' })
+const settings = ref<SiteSetting>({ siteName: '', heroImage: '', heroText: '', siteIcon: '' })
 
 const siteNameFormRef = ref<FormInstance>()
 const heroTextFormRef = ref<FormInstance>()
@@ -39,6 +42,10 @@ const heroInputRef = ref<HTMLInputElement | null>(null)
 const pendingHeroFile = ref<File | null>(null)
 const pendingHeroPreview = ref('')
 const uploading = ref(false)
+const iconInputRef = ref<HTMLInputElement | null>(null)
+const pendingIconFile = ref<File | null>(null)
+const pendingIconPreview = ref('')
+const uploadingIcon = ref(false)
 
 /** 最近一次选择的原图，用于"重新裁剪" */
 const sourceHeroFile = ref<File | null>(null)
@@ -57,6 +64,8 @@ const cropRendering = ref(false)
 const savedHeroUrl = computed(() => (settings.value.heroImage ? `/api${settings.value.heroImage}` : ''))
 /** 头图显示：选了新图先看新图，没选就显示当前已保存的那张 */
 const heroPreviewUrl = computed(() => pendingHeroPreview.value || savedHeroUrl.value)
+const savedIconUrl = computed(() => (settings.value.siteIcon ? `/api${settings.value.siteIcon}` : ''))
+const iconPreviewUrl = computed(() => pendingIconPreview.value || savedIconUrl.value)
 
 /** 1 倍时把图片等比放大到刚好盖住取景框的比例 */
 const cropBaseScale = computed(() => {
@@ -108,7 +117,8 @@ function applySettings(data: SiteSetting) {
   settings.value = {
     siteName: data.siteName,
     heroImage: data.heroImage || '',
-    heroText: data.heroText || ''
+    heroText: data.heroText || '',
+    siteIcon: data.siteIcon || ''
   }
   siteNameForm.value = { siteName: data.siteName }
   heroTextForm.value = { heroText: data.heroText || '' }
@@ -407,9 +417,84 @@ async function clearHero() {
   }
 }
 
+function pickSiteIcon() {
+  iconInputRef.value?.click()
+}
+
+function onSiteIconChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] ?? null
+  input.value = ''
+  if (!file) return
+
+  const extension = file.name.split('.').pop()?.toLowerCase()
+  if (extension !== 'ico' && extension !== 'png') {
+    ElMessage.warning('站点图标仅支持 ICO 或 PNG 图片')
+    return
+  }
+  if (file.size > SITE_ICON_MAX_SIZE) {
+    ElMessage.warning('站点图标不能超过 1MB')
+    return
+  }
+
+  clearPendingIcon()
+  pendingIconFile.value = file
+  pendingIconPreview.value = URL.createObjectURL(file)
+}
+
+function clearPendingIcon() {
+  if (pendingIconPreview.value) {
+    URL.revokeObjectURL(pendingIconPreview.value)
+    pendingIconPreview.value = ''
+  }
+  pendingIconFile.value = null
+}
+
+async function uploadSiteIcon() {
+  const file = pendingIconFile.value
+  if (!file) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+  uploadingIcon.value = true
+  try {
+    const res = (await request.post('/admin/site/favicon', formData, { timeout: 20000 })) as {
+      data: SiteSetting
+    }
+    clearPendingIcon()
+    applySettings(res.data)
+    ElMessage.success('站点图标已更新')
+  } catch {
+    // 错误提示由 request 拦截器统一处理
+  } finally {
+    uploadingIcon.value = false
+  }
+}
+
+async function clearSiteIcon() {
+  if (!settings.value.siteIcon) return
+
+  try {
+    await ElMessageBox.confirm('移除后会恢复默认站点图标，确定移除吗？', '移除站点图标', {
+      confirmButtonText: '移除',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return
+  }
+
+  try {
+    await saveField({ siteIcon: '' }, '站点图标已恢复默认')
+  } catch {
+    // 错误提示由 request 拦截器统一处理
+  }
+}
+
 onMounted(loadSettings)
 onBeforeUnmount(() => {
   clearPendingHero()
+  clearPendingIcon()
   releaseCropUrl()
 })
 </script>
@@ -492,6 +577,42 @@ onBeforeUnmount(() => {
           <el-button type="primary" :loading="savingHeroText" @click="saveHeroText">
             保存首页文字
           </el-button>
+        </div>
+      </section>
+
+      <section v-loading="loading" class="admin-panel setting-card">
+        <div class="card-head">
+          <h2 class="card-title">站点图标</h2>
+        </div>
+
+        <div class="site-icon-row">
+          <div class="site-icon-preview">
+            <img :src="iconPreviewUrl || '/favicon.ico'" alt="当前站点图标" />
+          </div>
+
+          <div class="hero-actions">
+            <input
+              ref="iconInputRef"
+              class="file-input"
+              type="file"
+              accept=".ico,.png,image/png,image/x-icon,image/vnd.microsoft.icon"
+              @change="onSiteIconChange"
+            />
+            <div class="hero-buttons">
+              <el-button @click="pickSiteIcon">选择图标</el-button>
+              <el-button
+                type="primary"
+                :loading="uploadingIcon"
+                :disabled="!pendingIconFile"
+                @click="uploadSiteIcon"
+              >
+                保存图标
+              </el-button>
+              <el-button v-if="pendingIconFile" link @click="clearPendingIcon">取消选择</el-button>
+              <el-button v-else-if="settings.siteIcon" link @click="clearSiteIcon">恢复默认</el-button>
+            </div>
+            <p class="card-tip">支持 ICO / PNG，文件不超过 1MB</p>
+          </div>
         </div>
       </section>
 
@@ -625,6 +746,31 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 22px;
+}
+
+.site-icon-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 22px;
+}
+
+.site-icon-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-panel, 6px);
+  background: var(--panel-alt-bg);
+}
+
+.site-icon-preview img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
 }
 
 /* 当前头图：进来先看到已经保存的那张，选了新图则先显示新图 */

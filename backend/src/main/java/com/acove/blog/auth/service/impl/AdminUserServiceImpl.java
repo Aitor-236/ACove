@@ -1,6 +1,7 @@
 package com.acove.blog.auth.service.impl;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.acove.blog.auth.dto.ChangePasswordDTO;
 import com.acove.blog.auth.dto.UserProfileDTO;
 import com.acove.blog.auth.dto.UserProfileVO;
 import com.acove.blog.auth.entity.SysUser;
@@ -34,6 +37,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     /** sys_user.username / email 的列长度，超长直接给 400，避免数据库截断异常变成 500。 */
     private static final int USERNAME_MAX_LENGTH = 50;
     private static final int EMAIL_MAX_LENGTH = 100;
+    private static final int BCRYPT_MAX_PASSWORD_BYTES = 72;
 
     /** 头像文件大小上限，和 application.yml 里的 multipart 限制保持一致。 */
     private static final long AVATAR_MAX_SIZE = 5L * 1024 * 1024;
@@ -49,6 +53,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             Pattern.compile("for key '(?:sys_user\\.)?(uk_email|uk_username)'$");
 
     private final SysUserMapper sysUserMapper;
+    private final PasswordEncoder passwordEncoder;
 
     /** 上传文件的根目录，默认是运行目录下的 uploads/。 */
     @Value("${blog.upload.dir:./uploads}")
@@ -144,6 +149,35 @@ public class AdminUserServiceImpl implements AdminUserService {
         sysUserMapper.updateById(update);
 
         return getProfile(existing.getId());
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordDTO changePasswordDTO) {
+        SysUser existing = requireUser(userId);
+        if (changePasswordDTO == null) {
+            throw new BusinessException("请填写当前密码和新密码");
+        }
+
+        String currentPassword = changePasswordDTO.getCurrentPassword();
+        String newPassword = changePasswordDTO.getNewPassword();
+        if (currentPassword == null || currentPassword.isEmpty()) {
+            throw new BusinessException("请输入当前密码");
+        }
+        if (newPassword == null || newPassword.isEmpty()) {
+            throw new BusinessException("请输入新密码");
+        }
+        if (newPassword.getBytes(StandardCharsets.UTF_8).length > BCRYPT_MAX_PASSWORD_BYTES) {
+            throw new BusinessException("新密码不能超过 72 个 UTF-8 字节");
+        }
+        if (!passwordEncoder.matches(currentPassword, existing.getPassword())) {
+            throw new BusinessException("当前密码不正确");
+        }
+
+        SysUser update = new SysUser();
+        update.setId(existing.getId());
+        update.setPassword(passwordEncoder.encode(newPassword));
+        sysUserMapper.updateById(update);
     }
 
     /** 取当前登录用户，未登录（token 里没有 userId）或用户已被删掉时抛业务异常。 */

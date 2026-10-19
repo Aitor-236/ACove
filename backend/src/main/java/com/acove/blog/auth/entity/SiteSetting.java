@@ -25,6 +25,9 @@ public class SiteSetting {
     /** 首页头图相对地址（/uploads/hero/xxx），空字符串表示用默认底色 */
     private String heroImage;
 
+    /** 站点图标相对地址（/uploads/favicon/xxx），空字符串表示使用默认图标 */
+    private String siteIcon;
+
     /** 首页中间的文字，空字符串表示回退成网站名 */
     private String heroText;
 
