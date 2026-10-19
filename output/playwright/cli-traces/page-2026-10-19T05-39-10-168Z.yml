@@ -1,0 +1,72 @@
+- generic [active] [ref=f44e1]:
+  - generic [ref=f44e2]:
+    - generic [ref=f44e3]:
+      - banner [ref=f44e4]:
+        - heading "记录生活，慢慢生长" [level=1] [ref=f44e5]
+      - generic [ref=f44e6]:
+        - complementary "工具栏" [ref=f44e7]:
+          - generic [ref=f44e8]:
+            - img "ACove 的头像" [ref=f44e9]
+            - paragraph [ref=f44e10]: ACove
+            - generic [ref=f44e11]:
+              - generic [ref=f44e12]:
+                - term [ref=f44e13]: 文章
+                - definition [ref=f44e14]: "3"
+              - generic [ref=f44e15]:
+                - term [ref=f44e16]: 图片
+                - definition [ref=f44e17]: "0"
+        - main [ref=f44e18]:
+          - generic [ref=f44e19]:
+            - link "开发笔记 让界面清晰一点 保留温暖的米白和棕色，用清晰边界呈现每一条记录。 2026-10-19 10:00" [ref=f44e20] [cursor=pointer]:
+              - /url: /articles/1
+              - generic [ref=f44e21]: 开发笔记
+              - heading "让界面清晰一点" [level=3] [ref=f44e22]
+              - paragraph [ref=f44e23]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - time [ref=f44e25]: 2026-10-19 10:00
+            - link "开发笔记 设计与日常 页面、图片与日常的小小进展。 2026-10-19 10:00" [ref=f44e26] [cursor=pointer]:
+              - /url: /articles/2
+              - generic [ref=f44e27]: 开发笔记
+              - heading "设计与日常" [level=3] [ref=f44e28]
+              - paragraph [ref=f44e29]: 页面、图片与日常的小小进展。
+              - time [ref=f44e31]: 2026-10-19 10:00
+            - link "开发笔记 新的开始 保留温暖的米白和棕色，用清晰边界呈现每一条记录。 2026-10-19 10:00" [ref=f44e32] [cursor=pointer]:
+              - /url: /articles/3
+              - generic [ref=f44e33]: 开发笔记
+              - heading "新的开始" [level=3] [ref=f44e34]
+              - paragraph [ref=f44e35]: 保留温暖的米白和棕色，用清晰边界呈现每一条记录。
+              - time [ref=f44e37]: 2026-10-19 10:00
+        - complementary "待办清单" [ref=f44e38]:
+          - generic [ref=f44e39]:
+            - generic [ref=f44e40]:
+              - heading "待办" [level=2] [ref=f44e41]
+              - generic [ref=f44e42]: 共 2 条
+            - generic [ref=f44e43]:
+              - generic [ref=f44e44]:
+                - paragraph [ref=f44e45]:
+                  - text: 打磨中
+                  - generic [ref=f44e47]: "1"
+                - list [ref=f44e48]:
+                  - listitem [ref=f44e49]:
+                    - generic [ref=f44e50]: 打磨界面细节
+                    - generic [ref=f44e51]: 置顶
+              - generic [ref=f44e52]:
+                - paragraph [ref=f44e53]:
+                  - text: 酝酿中
+                  - generic [ref=f44e55]: "1"
+                - list [ref=f44e56]:
+                  - listitem [ref=f44e57]:
+                    - generic [ref=f44e58]: 整理新的文章
+    - navigation "全局导航" [ref=f44e59]:
+      - link "主页" [ref=f44e60] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=f44e66] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=f44e72] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=f44e79] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=f44e86] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=f44e92]:
+    - generic "Toggle devtools panel" [ref=f44e93] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=f44e99] [cursor=pointer]

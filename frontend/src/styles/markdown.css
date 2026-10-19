@@ -79,7 +79,6 @@
   max-width: 100%;
   margin: 0 auto 20px;
   border-radius: 16px;
-  box-shadow: 0 12px 28px rgba(120, 88, 58, 0.2);
 }
 
 .markdown-body hr {
@@ -107,7 +106,6 @@
   border-radius: var(--code-block-radius, 16px);
   overflow-x: auto;
   background: var(--code-bg, #3f2e22);
-  box-shadow: 0 12px 26px rgba(63, 46, 34, 0.18);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -149,7 +147,6 @@
   border-radius: var(--code-block-radius, 16px);
   overflow: hidden;
   background: var(--code-bg, #3f2e22);
-  box-shadow: 0 12px 26px rgba(63, 46, 34, 0.18);
 }
 
 .markdown-body .code-group-tabs {

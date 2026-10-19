@@ -183,14 +183,11 @@ watch(() => route.params.id, loadGallery, { immediate: true })
   border-radius: 20px;
   background: var(--panel-alt-bg);
   cursor: zoom-in;
+  transition: border-color 0.2s ease;
 }
 
-.gallery-image :deep(.el-image__inner) {
-  transition: transform 0.3s ease;
-}
-
-.gallery-image:hover :deep(.el-image__inner) {
-  transform: scale(1.035);
+.gallery-image:hover {
+  border-color: var(--panel-border-strong);
 }
 
 .image-error {

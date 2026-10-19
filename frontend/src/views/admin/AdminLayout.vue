@@ -356,8 +356,7 @@ async function handleLogout() {
   color: #fdf9f2;
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 10px 22px rgba(138, 90, 59, 0.28);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .brand-text {
@@ -435,8 +434,7 @@ async function handleLogout() {
   background: var(--panel-alt-bg);
   transition:
     color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    background-color 0.2s ease;
 }
 
 .nav-item:hover {
@@ -446,8 +444,7 @@ async function handleLogout() {
 
 .nav-item.is-active {
   color: #fdf9f2;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 10px 22px rgba(138, 90, 59, 0.24);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .nav-item.is-disabled {
@@ -497,7 +494,7 @@ async function handleLogout() {
   color: #fdf9f2;
   font-size: 14px;
   font-weight: 600;
-  background: linear-gradient(135deg, #cfa986, #8a5a3b);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .account-avatar img {

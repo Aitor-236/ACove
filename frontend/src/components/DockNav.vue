@@ -51,7 +51,6 @@ function isActive(path: string) {
   border: 1px solid rgba(138, 90, 59, 0.14);
   border-radius: 24px;
   background: #fffdf9;
-  box-shadow: 0 16px 38px rgba(120, 88, 58, 0.16);
 }
 
 .dock-item {
@@ -66,8 +65,7 @@ function isActive(path: string) {
   color: rgba(74, 54, 41, 0.72);
   transition:
     color 0.25s ease,
-    background-color 0.25s ease,
-    transform 0.25s ease;
+    background-color 0.25s ease;
 }
 
 .dock-icon {
@@ -80,7 +78,6 @@ function isActive(path: string) {
   font-size: 20px;
   line-height: 1;
   background: var(--panel-alt-bg, #f8f2e7);
-  transition: transform 0.25s ease;
 }
 
 .dock-label {
@@ -93,18 +90,15 @@ function isActive(path: string) {
   background: var(--panel-alt-bg, #f8f2e7);
 }
 
-.dock-item:hover .dock-icon {
-  transform: translateY(-6px) scale(1.08);
-}
-
 .dock-item.is-active {
-  color: #5c3a24;
-  background: #f6efe2;
+  color: var(--accent-brown, #8a5a3b);
+  background: transparent;
 }
 
-.dock-item.is-active .dock-icon {
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 8px 18px rgba(138, 90, 59, 0.3);
+.dock-item.is-active .dock-label {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 5px;
 }
 
 /* 前台导航项变多后，窄屏改成等分自适应，避免溢出 */

@@ -143,8 +143,7 @@ async function handleLogin() {
   color: #fdf9f2;
   font-size: 28px;
   font-weight: 700;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 10px 24px rgba(138, 90, 59, 0.3);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .login-header h1 {
@@ -167,15 +166,11 @@ async function handleLogin() {
 .login-card :deep(.el-input__wrapper) {
   border-radius: 12px;
   background: var(--panel-alt-bg);
-  box-shadow:
-    0 0 0 1px rgba(138, 90, 59, 0.24) inset,
-    0 4px 14px rgba(120, 88, 58, 0.08);
+  box-shadow: 0 0 0 1px rgba(138, 90, 59, 0.24) inset;
 }
 
 .login-card :deep(.el-input__wrapper.is-focus) {
-  box-shadow:
-    0 0 0 1px var(--el-color-primary) inset,
-    0 4px 16px rgba(120, 88, 58, 0.16);
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
 }
 
 .login-button {
@@ -186,7 +181,6 @@ async function handleLogin() {
   border-radius: 12px;
   font-size: 16px;
   letter-spacing: 8px;
-  box-shadow: 0 10px 24px rgba(138, 90, 59, 0.26);
 }
 
 .login-footer {

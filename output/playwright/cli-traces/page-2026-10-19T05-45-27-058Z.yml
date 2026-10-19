@@ -1,0 +1,93 @@
+- generic [ref=f50e1]:
+  - generic [ref=f50e3]:
+    - complementary [ref=f50e4]:
+      - generic [ref=f50e5]:
+        - generic [ref=f50e6]:
+          - generic [ref=f50e7]: A
+          - generic [ref=f50e8]:
+            - strong [ref=f50e9]: ACove
+            - generic [ref=f50e10]: 管理后台
+        - button "分类管理" [expanded] [ref=f50e11] [cursor=pointer]
+      - generic [ref=f50e78]:
+        - navigation "后台导航" [ref=f50e79]:
+          - generic [ref=f50e80]:
+            - paragraph [ref=f50e81]: 内容管理
+            - link "文章列表" [ref=f50e82] [cursor=pointer]:
+              - /url: /admin/articles
+            - link "新建文章" [ref=f50e88] [cursor=pointer]:
+              - /url: /admin/articles/new
+            - link "首页展示" [ref=f50e94] [cursor=pointer]:
+              - /url: /admin/home-articles
+            - link "分类管理" [ref=f50e100] [cursor=pointer]:
+              - /url: /admin/categories
+            - link "标签管理" [ref=f50e106] [cursor=pointer]:
+              - /url: /admin/tags
+            - link "图库管理" [ref=f50e112] [cursor=pointer]:
+              - /url: /admin/galleries
+          - generic [ref=f50e119]:
+            - paragraph [ref=f50e120]: 待办事项
+            - link "待办清单" [ref=f50e121] [cursor=pointer]:
+              - /url: /admin/todos
+          - generic [ref=f50e127]:
+            - paragraph [ref=f50e128]: 开源项目
+            - link "项目列表" [ref=f50e129] [cursor=pointer]:
+              - /url: /admin/projects
+          - generic [ref=f50e136]:
+            - paragraph [ref=f50e137]: 个人管理
+            - link "个人资料" [ref=f50e138] [cursor=pointer]:
+              - /url: /admin/profile
+            - link "个人简介" [ref=f50e144] [cursor=pointer]:
+              - /url: /admin/profile-page
+          - generic [ref=f50e150]:
+            - paragraph [ref=f50e151]: 站点设置
+            - link "网站设置" [ref=f50e152] [cursor=pointer]:
+              - /url: /admin/site
+          - generic [ref=f50e158]:
+            - paragraph [ref=f50e159]: 站点数据
+            - link "访问统计" [ref=f50e160] [cursor=pointer]:
+              - /url: /admin/visits
+        - generic [ref=f50e166]:
+          - generic [ref=f50e167]:
+            - generic [ref=f50e168]: A
+            - generic [ref=f50e169]: ACove
+          - generic [ref=f50e170]:
+            - link "返回前台" [ref=f50e171] [cursor=pointer]:
+              - /url: /
+            - button "退出登录" [ref=f50e172] [cursor=pointer]
+    - main [ref=f50e19]:
+      - generic [ref=f50e20]:
+        - generic [ref=f50e21]:
+          - heading "分类管理" [level=1] [ref=f50e23]
+          - generic [ref=f50e24]:
+            - button "刷新" [ref=f50e25] [cursor=pointer]
+            - button "新建分类" [ref=f50e27] [cursor=pointer]
+        - generic [ref=f50e31]:
+          - table [ref=f50e33]:
+            - rowgroup [ref=f50e39]:
+              - row [ref=f50e40]:
+                - columnheader "分类" [ref=f50e41]
+                - columnheader "英文标识" [ref=f50e43]
+                - columnheader "文章数" [ref=f50e45]
+                - columnheader "操作" [ref=f50e47]
+          - table [ref=f50e53]:
+            - rowgroup [ref=f50e59]:
+              - row [ref=f50e60] [cursor=pointer]:
+                - cell [ref=f50e61]:
+                  - button "开发笔记" [ref=f50e63]
+                - cell [ref=f50e64]:
+                  - code [ref=f50e66]: dev
+                - cell [ref=f50e67]:
+                  - button "3 篇" [ref=f50e69]
+                - cell [ref=f50e71]:
+                  - generic [ref=f50e73]:
+                    - button "编辑" [ref=f50e74]
+                    - button "删除" [ref=f50e76]
+  - dialog "退出登录" [ref=f50e174]:
+    - generic [ref=f50e175]:
+      - generic [ref=f50e176]:
+        - generic [ref=f50e177]: 退出登录
+        - button "Close this dialog" [ref=f50e178] [cursor=pointer]
+      - paragraph [ref=f50e188]: 退出后需要重新登录才能进入后台，确定退出吗？
+      - generic [ref=f50e189]:
+        - button "取消" [ref=f50e190] [cursor=pointer]
+        - button "退出" [active] [ref=f50e192] [cursor=pointer]

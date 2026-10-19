@@ -1,0 +1,101 @@
+- generic [ref=f51e3]:
+  - complementary [ref=f51e4]:
+    - generic [ref=f51e6]:
+      - generic [ref=f51e7]: A
+      - generic [ref=f51e8]:
+        - strong [ref=f51e9]: ACove
+        - generic [ref=f51e10]: 管理后台
+    - generic [ref=f51e11]:
+      - navigation "后台导航" [ref=f51e12]:
+        - generic [ref=f51e13]:
+          - paragraph [ref=f51e14]: 内容管理
+          - link "文章列表" [ref=f51e15] [cursor=pointer]:
+            - /url: /admin/articles
+          - link "新建文章" [ref=f51e21] [cursor=pointer]:
+            - /url: /admin/articles/new
+          - link "首页展示" [ref=f51e27] [cursor=pointer]:
+            - /url: /admin/home-articles
+          - link "分类管理" [ref=f51e33] [cursor=pointer]:
+            - /url: /admin/categories
+          - link "标签管理" [ref=f51e39] [cursor=pointer]:
+            - /url: /admin/tags
+          - link "图库管理" [ref=f51e45] [cursor=pointer]:
+            - /url: /admin/galleries
+        - generic [ref=f51e52]:
+          - paragraph [ref=f51e53]: 待办事项
+          - link "待办清单" [ref=f51e54] [cursor=pointer]:
+            - /url: /admin/todos
+        - generic [ref=f51e60]:
+          - paragraph [ref=f51e61]: 开源项目
+          - link "项目列表" [ref=f51e62] [cursor=pointer]:
+            - /url: /admin/projects
+        - generic [ref=f51e69]:
+          - paragraph [ref=f51e70]: 个人管理
+          - link "个人资料" [ref=f51e71] [cursor=pointer]:
+            - /url: /admin/profile
+          - link "个人简介" [ref=f51e77] [cursor=pointer]:
+            - /url: /admin/profile-page
+        - generic [ref=f51e83]:
+          - paragraph [ref=f51e84]: 站点设置
+          - link "网站设置" [ref=f51e85] [cursor=pointer]:
+            - /url: /admin/site
+        - generic [ref=f51e91]:
+          - paragraph [ref=f51e92]: 站点数据
+          - link "访问统计" [ref=f51e93] [cursor=pointer]:
+            - /url: /admin/visits
+      - generic [ref=f51e99]:
+        - generic [ref=f51e100]:
+          - generic [ref=f51e101]: A
+          - generic [ref=f51e102]: ACove
+        - generic [ref=f51e103]:
+          - link "返回前台" [ref=f51e104] [cursor=pointer]:
+            - /url: /
+          - button "退出登录" [ref=f51e105] [cursor=pointer]
+  - main [ref=f51e106]:
+    - generic [ref=f51e107]:
+      - generic [ref=f51e108]:
+        - heading "新建文章 草稿" [level=1] [ref=f51e110]:
+          - text: 新建文章
+          - generic [ref=f51e111]: 草稿
+        - generic [ref=f51e113]:
+          - button "保存" [ref=f51e114] [cursor=pointer]
+          - button "完成" [ref=f51e116] [cursor=pointer]
+          - button "返回列表" [ref=f51e118] [cursor=pointer]
+          - button "发布文章" [ref=f51e120] [cursor=pointer]
+      - generic [ref=f51e122]:
+        - generic [ref=f51e124]:
+          - generic [ref=f51e125]:
+            - generic [ref=f51e126]: "*文章标题"
+            - textbox "*文章标题" [ref=f51e130]:
+              - /placeholder: 一句话说清这篇文章讲什么
+          - generic [ref=f51e131]:
+            - generic [ref=f51e132]: 文章摘要
+            - generic [ref=f51e134]:
+              - textbox "文章摘要" [ref=f51e135]:
+                - /placeholder: 出现在文章列表卡片上的简介，发布时必填
+              - status "0 / 500 characters" [ref=f51e136]: 0 / 500
+          - generic [ref=f51e137]:
+            - generic [ref=f51e138]: "*文章分类"
+            - generic [ref=f51e141]:
+              - generic [ref=f51e142]:
+                - combobox "*文章分类" [ref=f51e144]
+                - generic [ref=f51e145]: 选择文章分类
+              - generic [ref=f51e147] [cursor=pointer]
+          - generic [ref=f51e150]:
+            - generic [ref=f51e151]: 标签
+            - generic [ref=f51e154]:
+              - generic:
+                - combobox "标签" [ref=f51e156]
+                - generic [ref=f51e157]: 选择已有标签，或输入新标签后回车
+              - generic [ref=f51e159] [cursor=pointer]
+          - group "正文（Markdown）" [ref=f51e162]:
+            - generic [ref=f51e166]:
+              - generic [ref=f51e168]:
+                - generic [ref=f51e171]:
+                  - generic [ref=f51e173]: "1"
+                  - textbox [active] [ref=f51e175]:
+                    - generic [ref=f51e176]:
+                      - generic [aria-hidden]: "# 标题：正文直接写 Markdown，列表、表格、代码块、引用、图片都支持"
+                - button "插入图片（也可以直接粘贴或拖拽图片）" [ref=f51e177] [cursor=pointer]
+              - paragraph [ref=f51e185]: 正文预览
+        - complementary

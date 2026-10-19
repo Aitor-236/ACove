@@ -637,7 +637,7 @@ onBeforeUnmount(() => {
   color: #fdf9f2;
   font-size: 34px;
   font-weight: 600;
-  background: linear-gradient(135deg, #cfa986, #8a5a3b);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .avatar-preview img {

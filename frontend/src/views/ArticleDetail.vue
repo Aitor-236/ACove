@@ -154,13 +154,10 @@ watch(
   font-family: inherit;
   cursor: pointer;
   background: var(--panel-alt-bg);
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .back-link:hover {
-  transform: translateX(-2px);
   background: #fbf6ec;
 }
 
@@ -285,8 +282,7 @@ watch(
   border-radius: 12px;
   color: #fdf9f2;
   font-size: 14px;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 8px 18px rgba(138, 90, 59, 0.24);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 @media (max-width: 720px) {

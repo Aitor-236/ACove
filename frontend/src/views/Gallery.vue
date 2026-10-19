@@ -155,15 +155,11 @@ onMounted(loadGalleries)
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: border-color 0.2s ease;
 }
 
-.gallery-card:hover,
-.gallery-card:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: 0 20px 44px rgba(120, 88, 58, 0.17);
+.gallery-card:hover {
+  border-color: var(--panel-border-strong);
 }
 
 .gallery-card:focus-visible {
@@ -185,11 +181,6 @@ onMounted(loadGalleries)
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.35s ease;
-}
-
-.gallery-card:hover .gallery-cover img {
-  transform: scale(1.035);
 }
 
 .cover-placeholder {

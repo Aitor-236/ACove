@@ -576,19 +576,14 @@ onBeforeRouteLeave(() => {
   border: 1px solid var(--panel-border, rgba(138, 90, 59, 0.14));
   border-radius: 20px;
   background: var(--panel-bg, #fffdf9);
-  box-shadow: 0 10px 24px rgba(120, 88, 58, 0.09);
   transition:
-    transform 0.25s ease,
-    box-shadow 0.25s ease,
     border-color 0.25s ease,
     background-color 0.25s ease;
 }
 
 .feed-item:hover {
-  transform: translateY(-2px);
   border-color: rgba(138, 90, 59, 0.34);
   background: #fbf6ec;
-  box-shadow: 0 16px 32px rgba(120, 88, 58, 0.14);
 }
 
 .card-tag {

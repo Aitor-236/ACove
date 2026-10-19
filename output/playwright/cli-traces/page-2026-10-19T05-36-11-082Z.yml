@@ -1,0 +1,47 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - banner [ref=e4]:
+        - heading "ACove" [level=1] [ref=e5]
+      - generic [ref=e6]:
+        - complementary "工具栏" [ref=e7]:
+          - generic [ref=e8]:
+            - img "ACove 的头像" [ref=e9]
+            - paragraph [ref=e10]: ACove
+            - generic [ref=e11]:
+              - generic [ref=e12]:
+                - term [ref=e13]: 文章
+                - definition [ref=e14]: "0"
+              - generic [ref=e15]:
+                - term [ref=e16]: 图片
+                - definition [ref=e17]: "0"
+        - main [ref=e18]:
+          - paragraph [ref=e20]: 文章加载失败，请稍后重试。
+        - complementary "待办清单" [ref=e21]:
+          - generic [ref=e22]:
+            - heading "待办" [level=2] [ref=e24]
+            - paragraph [ref=e26]: 待办加载失败，请稍后重试。
+    - navigation "全局导航" [ref=e27]:
+      - link "主页" [ref=e28] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=e34] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=e40] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=e47] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=e54] [cursor=pointer]:
+        - /url: /about
+  - alert [ref=e60]:
+    - paragraph [ref=e64]: Request failed with status code 502
+  - generic [ref=e65]:
+    - generic "Toggle devtools panel" [ref=e66] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=e72] [cursor=pointer]
+  - alert [ref=e77]:
+    - paragraph [ref=e81]: Request failed with status code 502
+  - alert [ref=e82]:
+    - paragraph [ref=e86]: Request failed with status code 502
+  - alert [ref=e87]:
+    - paragraph [ref=e91]: Request failed with status code 502
+  - alert [ref=e92]:
+    - paragraph [ref=e96]: Request failed with status code 502

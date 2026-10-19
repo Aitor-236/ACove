@@ -533,16 +533,12 @@ onBeforeRouteLeave(() => {
   border-radius: 12px;
   font-size: 14px;
   cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .search-button {
   color: #fdf9f2;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 8px 18px rgba(138, 90, 59, 0.24);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .search-clear {
@@ -550,10 +546,13 @@ onBeforeRouteLeave(() => {
   background: var(--panel-alt-bg);
 }
 
-.search-button:hover,
+.search-button:hover {
+  background: var(--text-strong, #3f2e22);
+}
+
 .search-clear:hover,
 .pager-button:not(:disabled):hover {
-  transform: translateY(-1px);
+  background: var(--bg-cream, #f6f1e7);
 }
 
 /* ---------- 窄屏筛选下拉（≤860px 才出现，替代右侧分类/标签栏） ---------- */
@@ -584,15 +583,11 @@ onBeforeRouteLeave(() => {
   min-height: 46px;
   border-radius: 14px;
   background: var(--panel-bg);
-  box-shadow:
-    0 0 0 1px rgba(138, 90, 59, 0.24) inset,
-    0 6px 16px rgba(120, 88, 58, 0.08);
+  box-shadow: 0 0 0 1px rgba(138, 90, 59, 0.24) inset;
 }
 
 .filter-bar :deep(.el-select__wrapper.is-focused) {
-  box-shadow:
-    0 0 0 1px var(--accent-brown) inset,
-    0 8px 20px rgba(120, 88, 58, 0.14);
+  box-shadow: 0 0 0 1px var(--accent-brown) inset;
 }
 
 .filter-bar :deep(.el-select__selected-item) {
@@ -647,16 +642,11 @@ onBeforeRouteLeave(() => {
   padding: 30px 32px;
   border-radius: 24px;
   cursor: pointer;
-  transition:
-    transform 0.25s ease,
-    border-color 0.25s ease,
-    box-shadow 0.25s ease;
+  transition: border-color 0.25s ease;
 }
 
 .article-item:hover {
-  transform: translateY(-4px);
   border-color: rgba(138, 90, 59, 0.34);
-  box-shadow: 0 20px 44px rgba(120, 88, 58, 0.16);
 }
 
 .article-item:focus-visible {
@@ -798,7 +788,6 @@ onBeforeRouteLeave(() => {
 .pager-button {
   color: var(--accent-brown);
   background: var(--panel-alt-bg);
-  box-shadow: 0 8px 18px rgba(120, 88, 58, 0.12);
 }
 
 .pager-button:disabled {
@@ -857,8 +846,7 @@ onBeforeRouteLeave(() => {
   background: var(--panel-alt-bg);
   transition:
     color 0.2s ease,
-    background-color 0.2s ease,
-    box-shadow 0.2s ease;
+    background-color 0.2s ease;
 }
 
 .filter-tag:hover {
@@ -868,8 +856,7 @@ onBeforeRouteLeave(() => {
 
 .filter-tag.is-active {
   color: #fdf9f2;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
-  box-shadow: 0 8px 18px rgba(138, 90, 59, 0.24);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .filter-count {

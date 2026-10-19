@@ -57,7 +57,6 @@
 
 .admin-page .el-button--primary {
   border: none;
-  box-shadow: 0 10px 22px rgba(138, 90, 59, 0.24);
 }
 
 .admin-page .el-button--default {
@@ -77,16 +76,12 @@
 .admin-page .el-select__wrapper {
   border-radius: 12px;
   background: var(--panel-alt-bg);
-  box-shadow:
-    0 0 0 1px rgba(138, 90, 59, 0.24) inset,
-    0 4px 14px rgba(120, 88, 58, 0.08);
+  box-shadow: 0 0 0 1px rgba(138, 90, 59, 0.24) inset;
 }
 
 .admin-page .el-input__wrapper.is-focus,
 .admin-page .el-select__wrapper.is-focused {
-  box-shadow:
-    0 0 0 1px var(--el-color-primary) inset,
-    0 4px 16px rgba(120, 88, 58, 0.16);
+  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
 }
 
 .admin-page .el-textarea__inner {
@@ -147,7 +142,7 @@
 
 .admin-page .el-pager li.is-active {
   color: #fdf9f2;
-  background: linear-gradient(135deg, #b98a5e, #8a5a3b);
+  background: var(--accent-brown, #8a5a3b);
 }
 
 .admin-page .el-tag {
@@ -171,7 +166,7 @@
 /*
  * 下拉面板被 teleport 到 body 上，不在 .admin-shell 里，拿不到那一层的棕色主题变量，
  * 于是选项会退回 Element Plus 默认的蓝色、纯白底和 4px 直角，和后台整体不搭。
- * 这里给带 admin-select-popper 的 popper 单独补一套变量 + 圆角投影，
+ * 这里给带 admin-select-popper 的 popper 单独补一套变量 + 圆角描边，
  * 用法：<el-select popper-class="admin-select-popper">。
  */
 .el-popper.admin-select-popper {
@@ -186,7 +181,7 @@
   --el-border-color-light: var(--panel-border);
   --el-fill-color-light: #f6efe3;
   --el-text-color-regular: var(--text-body);
-  --el-box-shadow-light: 0 18px 40px rgba(120, 88, 58, 0.18);
+  --el-box-shadow-light: none;
   --el-border-radius-base: 12px;
   --el-popper-border-radius: 16px;
 }

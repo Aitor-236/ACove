@@ -46,7 +46,12 @@ onMounted(async () => {
   --panel-border: rgba(138, 90, 59, 0.14);
   /* 比 --panel-border 重一点的描边，编辑器这类要看得见边界的地方用 */
   --panel-border-strong: rgba(138, 90, 59, 0.22);
-  --panel-shadow: 0 18px 44px rgba(120, 88, 58, 0.12);
+  --panel-shadow: none;
+  /* Element Plus 浮层挂到 body 后也继承这些变量，输入框的清晰描边不受影响。 */
+  --el-box-shadow: none;
+  --el-box-shadow-light: none;
+  --el-box-shadow-lighter: none;
+  --el-box-shadow-dark: none;
   /* 访问统计里涨 / 跌的文字色，别在组件里写死颜色 */
   --trend-up: #4a7a52;
   --trend-down: #b4553c;
@@ -117,12 +122,36 @@ a {
   margin: 0 auto;
 }
 
-/* 框：实色底 + 描边 + 圆角 + 投影，每块内容只有一层 */
+/* 框：实色底 + 描边 + 圆角，每块内容只有一层 */
 .surface-panel {
   border: 1px solid var(--panel-border);
   border-radius: 26px;
   background: var(--panel-bg);
   box-shadow: var(--panel-shadow);
+}
+
+/* 弹窗失去投影后靠描边分隔；遮罩和组件本身的进出动画继续保留。 */
+.el-dialog,
+.el-message-box {
+  border: 1px solid var(--panel-border-strong);
+}
+
+.el-message.is-plain {
+  border-color: var(--panel-border);
+}
+
+/* 固定列的渐暗边缘由组件单独声明，随全站面板一起改成清晰边界。 */
+.el-table {
+  --el-table-fixed-left-column: none;
+  --el-table-fixed-right-column: none;
+}
+
+.el-table .el-table-fixed-column--left.is-last-column {
+  border-right: 1px solid var(--el-table-border-color);
+}
+
+.el-table .el-table-fixed-column--right.is-first-column {
+  border-left: 1px solid var(--el-table-border-color);
 }
 
 /* ---------- 前台 el-select 的下拉面板（popper） ---------- */
@@ -144,7 +173,7 @@ a {
   --el-border-color-light: var(--panel-border);
   --el-fill-color-light: #f6efe3;
   --el-text-color-regular: var(--text-body);
-  --el-box-shadow-light: 0 18px 40px rgba(120, 88, 58, 0.18);
+  --el-box-shadow-light: none;
   --el-border-radius-base: 12px;
   --el-popper-border-radius: 16px;
 }

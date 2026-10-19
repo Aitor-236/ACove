@@ -505,6 +505,16 @@ defineExpose({
   height: 100%;
 }
 
+/* CodeMirror 的搜索按钮自带渐变，常态和按下时都使用现有纯色主题。 */
+.source-host :deep(.cm-button),
+.source-host :deep(.cm-button:active) {
+  background-image: none;
+}
+
+.source-host :deep(.cm-button:hover) {
+  background-color: var(--panel-alt-bg);
+}
+
 /* 右上角「插入图片」：常驻但低调，鼠标进源码区或聚焦时亮起来 */
 .pane-action {
   display: inline-flex;
@@ -522,7 +532,6 @@ defineExpose({
   color: var(--accent-brown);
   font-size: 15px;
   background: var(--panel-bg);
-  box-shadow: 0 6px 18px var(--panel-border);
   cursor: pointer;
   opacity: 0.72;
   transition:

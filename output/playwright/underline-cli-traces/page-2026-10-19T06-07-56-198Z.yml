@@ -1,0 +1,42 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - main [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - generic [ref=e7]:
+            - textbox "搜索文章标题或摘要" [ref=e11]
+            - button "搜索" [ref=e12] [cursor=pointer]
+          - paragraph [ref=e15]: 正在加载文章…
+        - complementary "文章筛选" [ref=e16]:
+          - generic [ref=e17]:
+            - heading "分类" [level=2] [ref=e18]
+            - generic [ref=e19]:
+              - button "全部 0" [ref=e20] [cursor=pointer]:
+                - generic [ref=e21]: 全部
+                - generic [ref=e22]: "0"
+              - button "前端 0" [ref=e23] [cursor=pointer]:
+                - generic [ref=e24]: 前端
+                - generic [ref=e25]: "0"
+              - button "后端 0" [ref=e26] [cursor=pointer]:
+                - generic [ref=e27]: 后端
+                - generic [ref=e28]: "0"
+              - button "绘画 0" [ref=e29] [cursor=pointer]:
+                - generic [ref=e30]: 绘画
+                - generic [ref=e31]: "0"
+              - button "生活 0" [ref=e32] [cursor=pointer]:
+                - generic [ref=e33]: 生活
+                - generic [ref=e34]: "0"
+    - navigation "全局导航" [ref=e35]:
+      - link "主页" [ref=e36] [cursor=pointer]:
+        - /url: /
+      - link "文章" [ref=e42] [cursor=pointer]:
+        - /url: /articles
+      - link "图库" [ref=e48] [cursor=pointer]:
+        - /url: /gallery
+      - link "开源项目" [ref=e55] [cursor=pointer]:
+        - /url: /projects
+      - link "个人简介" [ref=e62] [cursor=pointer]:
+        - /url: /about
+  - generic [ref=e68]:
+    - generic "Toggle devtools panel" [ref=e69] [cursor=pointer]
+    - generic "Toggle Component Inspector" [ref=e75] [cursor=pointer]
