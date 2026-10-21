@@ -81,6 +81,15 @@
   border-radius: var(--radius-panel, 6px);
 }
 
+.markdown-body img[data-full-src] {
+  cursor: zoom-in;
+}
+
+.markdown-body img[data-full-src]:focus-visible {
+  outline: 2px solid var(--accent-brown, #9b6846);
+  outline-offset: 3px;
+}
+
 .markdown-body hr {
   margin: 28px 0;
   border: none;

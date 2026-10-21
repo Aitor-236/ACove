@@ -10,6 +10,7 @@ import {
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
 import { VueDraggable } from 'vue-draggable-plus'
 import request from '@/utils/request'
+import { imageSource, thumbnailSource } from '@/utils/imageUrls'
 
 interface GalleryAlbum {
   id: number
@@ -47,6 +48,7 @@ const uploading = ref(false)
 const reordering = ref(false)
 const uploadProgress = ref({ done: 0, total: 0 })
 const fileInput = ref<HTMLInputElement | null>(null)
+const failedThumbnails = ref(new Set<number>())
 
 const selectedGallery = computed(
   () => albums.value.find((album) => album.id === selectedGalleryId.value) ?? null
@@ -70,9 +72,15 @@ const rules: FormRules<typeof form> = {
   ]
 }
 
-function imageSource(path: string | null) {
-  if (!path) return ''
-  return /^https?:\/\//i.test(path) ? path : `/api${path.startsWith('/') ? path : `/${path}`}`
+function displaySource(image: GalleryImage) {
+  return imageSource(
+    failedThumbnails.value.has(image.id) ? image.url : thumbnailSource(image.url, 480)
+  )
+}
+
+function handleThumbnailError(image: GalleryImage) {
+  if (failedThumbnails.value.has(image.id)) return
+  failedThumbnails.value = new Set(failedThumbnails.value).add(image.id)
 }
 
 async function loadGallery(id: number) {
@@ -414,12 +422,14 @@ onMounted(loadAlbums)
               <article v-for="(image, index) in detail.images" :key="image.id" class="image-card">
                 <el-image
                   class="managed-image"
-                  :src="imageSource(image.url)"
+                  :src="displaySource(image)"
                   :alt="`${selectedGallery.name}第 ${index + 1} 张图片`"
                   :preview-src-list="previewUrls"
                   :initial-index="index"
+                  loading="lazy"
                   fit="cover"
                   preview-teleported
+                  @error="handleThumbnailError(image)"
                 >
                   <template #error>
                     <div class="image-error"><el-icon><Picture /></el-icon></div>

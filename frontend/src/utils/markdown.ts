@@ -1,6 +1,7 @@
 import { marked, type Tokens } from 'marked'
 import DOMPurify from 'dompurify'
 import { highlightCode, languageLabel, resolveLanguage } from './highlight'
+import { imageSource, thumbnailSource, thumbnailSrcset } from './imageUrls'
 
 /**
  * 正文和预览共用一份渲染规则：marked 解析 + 语法高亮 + DOMPurify 清洗。
@@ -276,9 +277,6 @@ marked.use({
   ]
 })
 
-/** 清洗后的 HTML 里，src 分隔符一定是双引号，这里只补前缀、不碰其它地址。 */
-const UPLOAD_IMAGE_SRC = /(<img\b[^>]*?\ssrc=")\/uploads\//gi
-
 /** Markdown 原文 → 可直接 v-html 的 HTML。 */
 export function renderMarkdown(source: string): string {
   // breaks: true —— 编辑器里敲一次回车，正文里就换一行（否则单个换行会被合并成空格，
@@ -288,8 +286,28 @@ export function renderMarkdown(source: string): string {
     gfm: true,
     breaks: true
   }) as string
-  // 上传的图片在库里存的是 /uploads/... 相对地址（等于接口路径去掉 /api 前缀），
-  // 渲染时统一补上 /api：开发由 vite、生产由 nginx 去掉前缀转发，
-  // 这样正文里手写的 ![](/uploads/article/x.png) 也能正常显示。
-  return DOMPurify.sanitize(html).replace(UPLOAD_IMAGE_SRC, '$1/api/uploads/')
+  // Sanitization happens before adding image metadata or generated URLs.
+  const template = document.createElement('template')
+  template.innerHTML = DOMPurify.sanitize(html)
+  template.content.querySelectorAll<HTMLImageElement>('img').forEach((image) => {
+    const savedSource = image.getAttribute('src') ?? ''
+    const isUploadPath = savedSource.startsWith('/uploads/') || savedSource.startsWith('/api/uploads/')
+    const originalSource = isUploadPath ? imageSource(savedSource) : savedSource
+    if (isUploadPath) image.setAttribute('src', originalSource)
+
+    const smallSource = thumbnailSource(originalSource, 480)
+    if (smallSource !== originalSource) {
+      image.dataset.fullSrc = originalSource
+      image.setAttribute('role', 'button')
+      image.setAttribute('tabindex', '0')
+      image.setAttribute('aria-label', `点击查看原图：${image.getAttribute('alt') || '图片'}`)
+      image.setAttribute('src', smallSource)
+      image.setAttribute('srcset', thumbnailSrcset(originalSource))
+      image.setAttribute('sizes', '100vw')
+    }
+
+    image.setAttribute('loading', 'lazy')
+    image.setAttribute('decoding', 'async')
+  })
+  return template.innerHTML
 }

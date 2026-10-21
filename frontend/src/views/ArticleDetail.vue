@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { ElImageViewer } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 import { renderMarkdown } from '@/utils/markdown'
 import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
+import {
+  handleMarkdownImageClick,
+  handleMarkdownImageError,
+  handleMarkdownImageKeydown
+} from '@/utils/markdownImages'
 
 /** 公开文章详情（来自 GET /article/detail/{id}） */
 interface ArticleDetail {
@@ -25,6 +31,17 @@ const router = useRouter()
 const article = ref<ArticleDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
+const previewImage = ref('')
+
+function handleContentClick(event: MouseEvent) {
+  handleCodeGroupClick(event)
+  handleMarkdownImageClick(event, (source) => (previewImage.value = source))
+}
+
+function handleContentKeydown(event: KeyboardEvent) {
+  handleCodeGroupKeydown(event)
+  handleMarkdownImageKeydown(event, (source) => (previewImage.value = source))
+}
 
 // Markdown 在后端只存原文，这里用公共渲染器解析并清洗（含代码块语言标签、图片地址补前缀）
 const renderedContent = computed(() => {
@@ -126,10 +143,18 @@ watch(
         <div
           class="markdown-body"
           v-html="renderedContent"
-          @click="handleCodeGroupClick"
-          @keydown="handleCodeGroupKeydown"
+          @click="handleContentClick"
+          @keydown="handleContentKeydown"
+          @error.capture="handleMarkdownImageError"
         ></div>
       </article>
+
+      <ElImageViewer
+        v-if="previewImage"
+        :url-list="[previewImage]"
+        :teleported="true"
+        @close="previewImage = ''"
+      />
     </main>
   </div>
 </template>

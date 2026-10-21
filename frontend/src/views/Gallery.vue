@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { Picture } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import request from '@/utils/request'
+import { imageSource, thumbnailSource } from '@/utils/imageUrls'
 
 interface GalleryAlbum {
   id: number
@@ -19,9 +20,11 @@ const galleries = ref<GalleryAlbum[]>([])
 const loading = ref(true)
 const error = ref('')
 
-function imageSource(path: string | null) {
-  if (!path) return ''
-  return /^https?:\/\//i.test(path) ? path : `/api${path.startsWith('/') ? path : `/${path}`}`
+function fallbackCover(event: Event, path: string | null) {
+  const image = event.currentTarget as HTMLImageElement | null
+  if (!image || image.dataset.originalFallback === 'true') return
+  image.dataset.originalFallback = 'true'
+  image.src = imageSource(path)
 }
 
 async function loadGalleries() {
@@ -81,9 +84,11 @@ onMounted(loadGalleries)
           <span class="gallery-cover">
             <img
               v-if="gallery.coverImage"
-              :src="imageSource(gallery.coverImage)"
+              :src="thumbnailSource(gallery.coverImage, 480)"
               :alt="`${gallery.name}封面`"
               loading="lazy"
+              decoding="async"
+              @error="fallbackCover($event, gallery.coverImage)"
             />
             <span v-else class="cover-placeholder" aria-hidden="true">
               <el-icon><Picture /></el-icon>

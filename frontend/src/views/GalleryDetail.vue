@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
 import request from '@/utils/request'
+import { imageSource, thumbnailSource } from '@/utils/imageUrls'
 
 interface GalleryImage {
   id: number
@@ -25,12 +26,19 @@ const route = useRoute()
 const gallery = ref<GalleryDetail | null>(null)
 const loading = ref(true)
 const error = ref('')
+const failedThumbnails = ref(new Set<number>())
 
 const previewUrls = computed(() => gallery.value?.images.map((image) => imageSource(image.url)) ?? [])
 
-function imageSource(path: string | null) {
-  if (!path) return ''
-  return /^https?:\/\//i.test(path) ? path : `/api${path.startsWith('/') ? path : `/${path}`}`
+function displaySource(image: GalleryImage) {
+  return imageSource(
+    failedThumbnails.value.has(image.id) ? image.url : thumbnailSource(image.url, 480)
+  )
+}
+
+function handleThumbnailError(image: GalleryImage) {
+  if (failedThumbnails.value.has(image.id)) return
+  failedThumbnails.value = new Set(failedThumbnails.value).add(image.id)
 }
 
 async function loadGallery() {
@@ -91,12 +99,14 @@ watch(() => route.params.id, loadGallery, { immediate: true })
             v-for="(image, index) in gallery.images"
             :key="image.id"
             class="gallery-image"
-            :src="imageSource(image.url)"
+            :src="displaySource(image)"
             :alt="`${gallery.name}中的第 ${index + 1} 张图片`"
             :preview-src-list="previewUrls"
             :initial-index="index"
+            loading="lazy"
             fit="cover"
             preview-teleported
+            @error="handleThumbnailError(image)"
           >
             <template #error>
               <div class="image-error"><el-icon><Picture /></el-icon></div>

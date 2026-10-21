@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { ElImageViewer } from 'element-plus'
 import { renderMarkdown } from '@/utils/markdown'
 import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
+import {
+  handleMarkdownImageClick,
+  handleMarkdownImageError,
+  handleMarkdownImageKeydown
+} from '@/utils/markdownImages'
 
 /**
  * 正文渲染块：和前台详情页共用 utils/markdown.ts 那一份规则（代码块语法高亮、
@@ -26,6 +32,17 @@ const html = computed(() => {
   const source = props.source.trim()
   return source ? renderMarkdown(source) : ''
 })
+const previewImage = ref('')
+
+function handleContentClick(event: MouseEvent) {
+  handleCodeGroupClick(event)
+  handleMarkdownImageClick(event, (source) => (previewImage.value = source))
+}
+
+function handleContentKeydown(event: KeyboardEvent) {
+  handleCodeGroupKeydown(event)
+  handleMarkdownImageKeydown(event, (source) => (previewImage.value = source))
+}
 </script>
 
 <template>
@@ -34,10 +51,18 @@ const html = computed(() => {
     v-if="html"
     class="markdown-body"
     v-html="html"
-    @click="handleCodeGroupClick"
-    @keydown="handleCodeGroupKeydown"
+    @click="handleContentClick"
+    @keydown="handleContentKeydown"
+    @error.capture="handleMarkdownImageError"
   ></div>
   <p v-else class="markdown-preview-empty">{{ props.emptyText }}</p>
+
+  <ElImageViewer
+    v-if="previewImage"
+    :url-list="[previewImage]"
+    :teleported="true"
+    @close="previewImage = ''"
+  />
 </template>
 
 <style scoped>

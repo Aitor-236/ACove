@@ -15,10 +15,13 @@ import org.springframework.web.multipart.MultipartFile;
 import com.acove.blog.article.dto.UploadImageVO;
 import com.acove.blog.article.service.AdminUploadService;
 import com.acove.blog.common.exception.BusinessException;
+import com.acove.blog.common.utils.ImageThumbnailService;
 import com.acove.blog.common.utils.UploadFileNaming;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AdminUploadServiceImpl implements AdminUploadService {
@@ -51,7 +54,14 @@ public class AdminUploadServiceImpl implements AdminUploadService {
         Path imageDir = Paths.get(uploadDir).toAbsolutePath().normalize().resolve(ARTICLE_IMAGE_DIR);
         try {
             Files.createDirectories(imageDir);
-            file.transferTo(imageDir.resolve(filename));
+            Path target = imageDir.resolve(filename);
+            file.transferTo(target);
+            try {
+                ImageThumbnailService.generateMissingVariants(target);
+            } catch (IOException | RuntimeException exception) {
+                log.warn("Unable to generate display thumbnails for uploaded article image {}", filename,
+                        exception);
+            }
         } catch (IOException | IllegalStateException ex) {
             throw new BusinessException(500, "图片保存失败，请稍后重试");
         }

@@ -15,6 +15,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.acove.blog.common.exception.BusinessException;
+import com.acove.blog.common.utils.ImageThumbnailService;
 import com.acove.blog.common.utils.UploadFileNaming;
 import com.acove.blog.gallery.dto.GalleryAlbumVO;
 import com.acove.blog.gallery.dto.GalleryDTO;
@@ -75,6 +76,12 @@ public class AdminGalleryServiceImpl implements AdminGalleryService {
         try {
             Files.createDirectories(imageDir);
             file.transferTo(target);
+            try {
+                ImageThumbnailService.generateMissingVariants(target);
+            } catch (IOException | RuntimeException exception) {
+                log.warn("Unable to generate display thumbnails for uploaded gallery image {}", filename,
+                        exception);
+            }
         } catch (IOException | IllegalStateException ex) {
             deleteNewFileQuietly(target);
             log.warn("Unable to save gallery image", ex);
@@ -159,6 +166,7 @@ public class AdminGalleryServiceImpl implements AdminGalleryService {
             try {
                 Path imagePath = resolveStoredImagePath(imageUrl);
                 Files.deleteIfExists(imagePath);
+                ImageThumbnailService.deleteVariants(imagePath);
             } catch (IOException | RuntimeException ex) {
                 failedUrls.add(imageUrl);
                 log.error("Unable to clean up gallery image file for URL {}", imageUrl, ex);
@@ -191,6 +199,7 @@ public class AdminGalleryServiceImpl implements AdminGalleryService {
     private void deleteNewFileQuietly(Path path) {
         try {
             Files.deleteIfExists(path);
+            ImageThumbnailService.deleteVariants(path);
         } catch (IOException ex) {
             log.warn("Unable to remove an uncommitted gallery image file", ex);
         }

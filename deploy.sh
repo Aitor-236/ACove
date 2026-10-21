@@ -22,6 +22,7 @@
 #   status | ps               查看容器状态
 #   migrate                   重建后端触发 Flyway 迁移，并打印 flyway_schema_history
 #   info                      查看已应用 / 未应用的迁移版本
+#   image-thumbnails          为现有文章配图和图库图片补生成 WebP 缩略图
 #   init-db <sql文件...>      已废弃：只能手工导入指定 SQL（表结构一律走 Flyway）
 #   account                   创建 / 重置登录账号
 #   backup                    备份数据库与上传文件到 backups/<时间戳>/
@@ -542,6 +543,20 @@ cmd_backup() {
     log "包含 blog_db.sql（整库导出）与 uploads.tar.gz（上传文件），恢复步骤见 README 生产部署章节"
 }
 
+cmd_image_thumbnails() {
+    require_docker
+    load_env
+
+    local backend_id
+    backend_id="$("${COMPOSE[@]}" ps -q backend)"
+    [ -n "$backend_id" ] || die "后端容器没有运行，先执行 ./deploy.sh up"
+    [ "$(docker inspect -f '{{.State.Running}}' "$backend_id" 2>/dev/null || echo false)" = "true" ] \
+        || die "后端容器没有运行，先执行 ./deploy.sh up"
+
+    log "扫描现有文章配图和图库原图，补生成缺少的 WebP 缩略图"
+    "${COMPOSE[@]}" exec -T backend java -jar /app/app.jar --backfill-image-thumbnails
+}
+
 cmd_update() {
     require_docker
     if [ -d "$ROOT_DIR/.git" ]; then
@@ -575,6 +590,7 @@ main() {
         init-db|initdb)   cmd_init_db "$@" ;;
         account)          cmd_account "$@" ;;
         backup)           cmd_backup "$@" ;;
+        image-thumbnails) cmd_image_thumbnails "$@" ;;
         update)           cmd_update "$@" ;;
         help|-h|--help)   cmd_help ;;
         *)                die "未知命令：$cmd（用 ./deploy.sh help 查看用法）" ;;
