@@ -298,7 +298,7 @@ npm run format              # Prettier 格式化
 ./deploy.sh help            # 查看全部命令
 ```
 
-升级到支持图片缩略图的版本后，运行一次 `./deploy.sh image-thumbnails` 为已有图片生成 WebP 派生图；后续上传会自动生成。该命令可重复运行，只补缺少的文件。
+升级到支持图片缩略图的版本后，运行 `./deploy.sh image-thumbnails` 为已有图片生成 WebP 派生图；后续上传会自动生成。该命令会短暂停止后端以避免上传并发写入，完成后自动重启并等待后端就绪。它可以重复运行，会补齐缺少的文件并修复损坏的派生图。
 
 ## 生产部署
 
@@ -443,7 +443,7 @@ docker compose exec -T mysql sh -c \
 - `sys_user.role` 决定前台首页展示谁：优先级 `owner > admin > user`，同优先级取 `id` 最小的（最早注册的账号）。个人简介页后台接口额外要求角色值严格等于 `owner`；其他后台功能仍按各自现有登录校验处理。升/降站长直接改这一列即可，例如 `UPDATE sys_user SET role = 'owner' WHERE username = 'xxx';`。
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
 - 头像、正文配图、站点图标、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/favicon/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
-- 文章正文配图和图库图片保留原图，并在旁边生成 480px 与 1600px 长边的 WebP 派生图；列表和正文默认按需加载缩略图，点击后查看原图。GIF 缩略图使用首帧，原图仍保留动画；派生图使用一年 immutable 缓存。存量图片升级后用 `./deploy.sh image-thumbnails` 一次性补齐，不涉及数据库或 Markdown 内容变更。
+- 文章正文配图和图库图片保留原图，并在旁边生成 480px 与 1600px 长边的 WebP 派生图；列表和正文默认按需加载缩略图，点击后查看原图。GIF 缩略图使用首帧，原图仍保留动画；派生图使用一年 immutable 缓存。存量图片升级后用 `./deploy.sh image-thumbnails` 一次性补齐，不涉及数据库或 Markdown 内容变更；命令会停止后端完成离线扫描，再自动启动后端。
 - 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 站点图标 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增。

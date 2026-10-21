@@ -22,7 +22,7 @@
 #   status | ps               查看容器状态
 #   migrate                   重建后端触发 Flyway 迁移，并打印 flyway_schema_history
 #   info                      查看已应用 / 未应用的迁移版本
-#   image-thumbnails          为现有文章配图和图库图片补生成 WebP 缩略图
+#   image-thumbnails          暂停后端并为现有文章配图和图库图片补生成 WebP 缩略图
 #   init-db <sql文件...>      已废弃：只能手工导入指定 SQL（表结构一律走 Flyway）
 #   account                   创建 / 重置登录账号
 #   backup                    备份数据库与上传文件到 backups/<时间戳>/
@@ -553,8 +553,22 @@ cmd_image_thumbnails() {
     [ "$(docker inspect -f '{{.State.Running}}' "$backend_id" 2>/dev/null || echo false)" = "true" ] \
         || die "后端容器没有运行，先执行 ./deploy.sh up"
 
-    log "扫描现有文章配图和图库原图，补生成缺少的 WebP 缩略图"
-    "${COMPOSE[@]}" exec -T backend java -jar /app/app.jar --backfill-image-thumbnails
+    log "暂停后端以避免上传并发写入"
+    "${COMPOSE[@]}" stop backend
+
+    local backfill_status=0
+    log "扫描现有文章配图和图库原图，补生成 WebP 缩略图"
+    if "${COMPOSE[@]}" run --rm --no-deps -T --entrypoint java backend \
+        -jar /app/app.jar --backfill-image-thumbnails; then
+        backfill_status=0
+    else
+        backfill_status=$?
+    fi
+
+    log "重新启动后端"
+    "${COMPOSE[@]}" start backend
+    wait_for_healthy
+    return "$backfill_status"
 }
 
 cmd_update() {
