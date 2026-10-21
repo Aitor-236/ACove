@@ -10,6 +10,7 @@ import lombok.Data;
  *   - heroText 传空串表示清空（前台回退成网站名）；
  *   - heroImage 传空串表示清除头图（回退成默认底色），传其它值必须是 /uploads/ 开头的相对地址；
  *   - siteIcon 仅用于传空串恢复默认站点图标；设置新图标必须调用上传接口。
+ *   - icpRecordNumber 传空串表示清空；icpRecordEnabled 与备案号可一起更新。
  */
 @Data
 public class SiteSettingDTO {
@@ -25,4 +26,10 @@ public class SiteSettingDTO {
 
     /** 站点图标相对地址，最长 255 字符，可传空串恢复默认图标 */
     private String siteIcon;
+
+    /** ICP 备案号，最长 100 字符，可清空 */
+    private String icpRecordNumber;
+
+    /** 是否在首页展示 ICP 备案号；开启时必须填写备案号 */
+    private Boolean icpRecordEnabled;
 }

@@ -45,6 +45,7 @@ public class SiteSettingServiceImpl implements SiteSettingService {
     private static final int HERO_TEXT_MAX_LENGTH = 200;
     private static final int HERO_IMAGE_MAX_LENGTH = 255;
     private static final int SITE_ICON_MAX_LENGTH = 255;
+    private static final int ICP_RECORD_NUMBER_MAX_LENGTH = 100;
 
     /** 头图文件大小上限，和 application.yml 里的 multipart 限制保持一致 */
     private static final long HERO_IMAGE_MAX_SIZE = 5L * 1024 * 1024;
@@ -103,6 +104,21 @@ public class SiteSettingServiceImpl implements SiteSettingService {
                 throw new BusinessException("站点图标请通过上传接口设置");
             }
             current.setSiteIcon("");
+        }
+
+        if (settingDTO.getIcpRecordNumber() != null) {
+            String icpRecordNumber = settingDTO.getIcpRecordNumber().trim();
+            requireWithinLength(icpRecordNumber, ICP_RECORD_NUMBER_MAX_LENGTH, "ICP备案号");
+            current.setIcpRecordNumber(icpRecordNumber);
+        }
+
+        if (settingDTO.getIcpRecordEnabled() != null) {
+            current.setIcpRecordEnabled(settingDTO.getIcpRecordEnabled());
+        }
+
+        if (Boolean.TRUE.equals(current.getIcpRecordEnabled())
+                && !StringUtils.hasText(current.getIcpRecordNumber())) {
+            throw new BusinessException("开启首页展示前请先填写ICP备案号");
         }
 
         return save(current);
@@ -175,6 +191,8 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         created.setHeroImage("");
         created.setSiteIcon("");
         created.setHeroText("");
+        created.setIcpRecordNumber("");
+        created.setIcpRecordEnabled(false);
         return created;
     }
 
@@ -190,6 +208,8 @@ public class SiteSettingServiceImpl implements SiteSettingService {
         update.setHeroImage(current.getHeroImage() == null ? "" : current.getHeroImage());
         update.setSiteIcon(current.getSiteIcon() == null ? "" : current.getSiteIcon());
         update.setHeroText(current.getHeroText() == null ? "" : current.getHeroText());
+        update.setIcpRecordNumber(current.getIcpRecordNumber() == null ? "" : current.getIcpRecordNumber());
+        update.setIcpRecordEnabled(Boolean.TRUE.equals(current.getIcpRecordEnabled()));
 
         if (siteSettingMapper.selectById(SETTING_ID) != null) {
             siteSettingMapper.updateById(update);
@@ -201,13 +221,15 @@ public class SiteSettingServiceImpl implements SiteSettingService {
 
     private SiteSettingVO toVO(SiteSetting setting) {
         if (setting == null) {
-            return new SiteSettingVO(DEFAULT_SITE_NAME, "", "", "");
+            return new SiteSettingVO(DEFAULT_SITE_NAME, "", "", "", "", false);
         }
         String siteName = StringUtils.hasText(setting.getSiteName()) ? setting.getSiteName() : DEFAULT_SITE_NAME;
         return new SiteSettingVO(siteName,
                 setting.getHeroImage() == null ? "" : setting.getHeroImage(),
                 setting.getHeroText() == null ? "" : setting.getHeroText(),
-                setting.getSiteIcon() == null ? "" : setting.getSiteIcon());
+                setting.getSiteIcon() == null ? "" : setting.getSiteIcon(),
+                setting.getIcpRecordNumber() == null ? "" : setting.getIcpRecordNumber(),
+                Boolean.TRUE.equals(setting.getIcpRecordEnabled()));
     }
 
     /**

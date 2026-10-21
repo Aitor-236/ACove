@@ -16,7 +16,7 @@ import com.acove.blog.common.result.Result;
 import lombok.RequiredArgsConstructor;
 
 /**
- * 后台「网站设置」接口：网站名、首页头图、站点图标、首页中间的文字。
+ * 后台「网站设置」接口：网站名、首页头图、站点图标、首页中间文字与 ICP 备案信息。
  * 路径在 /admin/** 下，不要加进 JwtInterceptor 的白名单。
  */
 @RestController

@@ -31,5 +31,11 @@ public class SiteSetting {
     /** 首页中间的文字，空字符串表示回退成网站名 */
     private String heroText;
 
+    /** ICP 备案号，空字符串表示尚未设置 */
+    private String icpRecordNumber;
+
+    /** 是否在首页展示 ICP 备案号 */
+    private Boolean icpRecordEnabled;
+
     private LocalDateTime updatedAt;
 }

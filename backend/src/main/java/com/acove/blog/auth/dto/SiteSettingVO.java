@@ -21,4 +21,10 @@ public class SiteSettingVO {
 
     /** 站点图标相对地址，形如 /uploads/favicon/xxx.png；空字符串表示使用默认图标 */
     private String siteIcon;
+
+    /** ICP 备案号；首页展示关闭或号码为空时，前台不渲染 */
+    private String icpRecordNumber;
+
+    /** 是否在首页展示 ICP 备案号 */
+    private Boolean icpRecordEnabled;
 }

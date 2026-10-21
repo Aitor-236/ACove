@@ -2,8 +2,8 @@
 
 一个前后端分离、可直接自托管的博客系统：前台展示文章、图库和个人简介，后台提供文章、分类、标签与图库的可视化管理。仓库本身不带任何个人化配置，克隆下来按「生产部署」填好 `.env` 就能跑成你自己的站点。
 
-- 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介；首页的网站名、头图和中间文字都可在后台改
-- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、图库与图片管理、个人管理（含修改密码）、网站设置（网站名 / 站点图标 / 首页头图 / 首页文字）、访问统计
+- 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介；首页的网站名、头图、中间文字和 ICP 备案号展示都可在后台设置
+- 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、图库与图片管理、个人管理（含修改密码）、网站设置（网站名 / 站点图标 / 首页头图 / 首页文字 / ICP 备案号）、访问统计
 - 鉴权：JWT（HS256）登录态，密码以 BCrypt 哈希存储，不存明文
 
 ## 技术栈
@@ -183,7 +183,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | GET | `/category/list` | 分类列表，`articleCount` 只统计已发布文章 |
 | GET | `/tag/list` | 标签列表，只返回至少有一篇已发布文章的标签，`articleCount` 只统计已发布文章 |
 | GET | `/site/owner` | 站长的用户名和头像（角色最高的账号，前台首页展示用，不含邮箱） |
-| GET | `/site/settings` | 前台站点设置：网站名、站点图标、首页头图、首页中间的文字（匿名可访问） |
+| GET | `/site/settings` | 前台站点设置：网站名、站点图标、首页头图 / 中间文字，以及 ICP 备案号和首页展示开关（匿名可访问） |
 | GET | `/site/profile-page` | 匿名读取个人简介页当前模式、Markdown 正文（Markdown 模式下附站长邮箱）或已发布 HTML 文档地址 |
 | GET | `/site/profile-page/html/{bundleId}` | 匿名读取当前已发布 HTML 文档；响应附 CSP sandbox 策略，候选包和已替换资源包不可通过此接口读取 |
 | GET | `/todo/list` | Todo 清单（前台只读）：一次性返回全部，置顶那条最先，其余按创建时间新 → 旧 |
@@ -213,8 +213,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | POST | `/admin/user/profile/update` | 修改用户名或邮箱，只更新传入的字段，重名或格式错误返回 400 |
 | POST | `/admin/user/avatar` | 上传头像（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | POST | `/admin/user/password` | 修改当前账号密码，body 为 `currentPassword` / `newPassword`；旧密码错误或新密码为空返回 400 |
-| GET | `/admin/site/settings` | 网站设置：读取网站名 / 站点图标 / 首页头图 / 首页中间的文字 |
-| POST | `/admin/site/settings/update` | 保存网站名或首页文字（只更新传入的字段）；`heroImage` 传空串表示清除头图，`siteIcon` 传空串恢复默认图标，新图标通过上传接口设置 |
+| GET | `/admin/site/settings` | 网站设置：读取网站名 / 站点图标 / 首页头图 / 首页中间文字 / ICP 备案号及展示开关 |
+| POST | `/admin/site/settings/update` | 局部保存网站设置；`heroImage` 传空串表示清除头图，`siteIcon` 传空串恢复默认图标，新图标通过上传接口设置；`icpRecordNumber` 最长 100 字符，`icpRecordEnabled` 开启时必须填写备案号 |
 | POST | `/admin/site/favicon` | 上传站点图标（multipart，字段名 `file`，≤ 1MB，ICO / PNG） |
 | POST | `/admin/site/hero-image` | 上传首页头图（multipart，字段名 `file`，≤ 5MB，png / jpg / webp / gif） |
 | GET | `/admin/profile-page` | 读取个人简介页配置；仅 `role=owner` 可访问 |
@@ -256,7 +256,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | `article_tag` | 文章与标签的关联表，复合主键，级联删除 |
 | `visit_daily_stat` | 每日访问汇总：`stat_date`（主键）/ `pv` / `uv`，一天一行，后台统计页的数据来源 |
 | `visit_visitor` | 每日访客去重：`stat_date` + `visitor_key`（唯一键），访客当天第一次出现才让 UV 加一；`visitor_key` 是 Cookie 里 IP + User-Agent 的哈希，不存原始 IP |
-| `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `site_icon`（站点图标相对地址，空表示使用默认图标）/ `hero_text`（首页中间文字，空表示回退成网站名） |
+| `site_setting` | 站点设置（单行，主键固定为 1）：`site_name`（网站名）/ `hero_image`（首页头图相对地址，空表示用默认底色）/ `site_icon`（站点图标相对地址，空表示使用默认图标）/ `hero_text`（首页中间文字，空表示回退成网站名）/ `icp_record_number`（ICP备案号）/ `icp_record_enabled`（首页是否展示，默认关闭） |
 | `todo` | Todo 清单（站长个人一份）：`title` / `description`（可空）/ `status`(todo-酝酿中, doing-打磨中, done-已完成) / `is_pinned` / `created_at` / `updated_at`；辅助列 `pinned_flag` 是生成列，配合唯一索引 `uk_todo_pinned` 保证全表最多一条 `is_pinned = 1`（迁移脚本 `V2__create_todo.sql`） |
 | `open_source_project` | 开源项目：`name` / `url`（项目地址）/ `description`（介绍）/ `update_log`（日志·最新更新内容）/ `next_step`（下一步·todo）/ `preview_image`（预览图相对地址，**暂未启用**，默认空串、前台不展示）/ `created_at` / `updated_at`（迁移脚本 `V3__create_open_source_project.sql`） |
 | `home_article` | 首页展示文章：`article_id`（主键，关联 `article.id`，级联删除）/ `sort_order`（越小越靠前）/ `created_at`；后台「首页展示」页维护，前台 `GET /article/home` 按它排序（迁移脚本 `V4__create_home_article.sql`） |
@@ -444,8 +444,8 @@ docker compose exec -T mysql sh -c \
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
 - 头像、正文配图、站点图标、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/favicon/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
 - 文章正文配图和图库图片保留原图，并在旁边生成 480px 与 1600px 长边的 WebP 派生图；列表和正文默认按需加载缩略图，点击后查看原图。GIF 缩略图使用首帧，原图仍保留动画；派生图使用一年 immutable 缓存。存量图片升级后用 `./deploy.sh image-thumbnails` 一次性补齐，不涉及数据库或 Markdown 内容变更；命令会停止后端完成离线扫描，再自动启动后端。
-- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置、`V9__add_icp_record_settings.sql` 增加 ICP 备案号与首页展示开关。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
-- 网站名 / 站点图标 / 首页头图 / 首页中间文字都存在 `site_setting` 单行表里，后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增。
+- 网站名 / 站点图标 / 首页头图 / 首页中间文字 / ICP 备案号和展示开关都存在 `site_setting` 单行表里，由后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增，ICP 字段由 V9 新增。
 - 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。
 - 文章编辑页是「先看后改」：打开已有文章先是只读的渲染预览（正文走前台那套 Markdown），点右上角「编辑」才进入可写状态。**编辑态下只有标题 / 摘要 / 正文会自动保存**（停下来约 1s 防抖落库，失败自动重试 2 次，顶部显示「正在保存 / 已保存 15:32 / 保存失败 · 重试」），**分类和标签不自动保存**，改完要点「保存」；「完成」回到预览时会先把待保存的文本 flush 掉。首页展示页同理：增删 / 拖拽约 300ms 后自动整体保存，没有保存按钮。两处共用 `frontend/src/composables/useAutoSave.ts`（防抖、单飞串行、重试、离开前 flush），自动保存的请求带 `silent: true`，失败不弹 toast。

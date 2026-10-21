@@ -43,6 +43,8 @@ interface SiteSettings {
   /** 头图相对地址，空字符串表示还没设置 */
   heroImage: string
   heroText: string
+  icpRecordNumber: string
+  icpRecordEnabled: boolean
 }
 
 /** 状态码：和库里存的 todo / doing / done 一一对应，展示文案由这里映射 */
@@ -117,6 +119,11 @@ const ownerAvatarUrl = computed(() =>
 const siteName = ref('ACove')
 const heroImage = ref('')
 const heroText = ref('')
+const icpRecordNumber = ref('')
+const icpRecordEnabled = ref(false)
+const showIcpRecord = computed(
+  () => icpRecordEnabled.value && Boolean(icpRecordNumber.value.trim())
+)
 /** 头图正中间那行字：没单独配就用网站名 */
 const heroTitle = computed(() => heroText.value.trim() || siteName.value.trim() || 'ACove')
 /** 首页头图背景：统一压暗层（保证白字可读）+ 底部向页面底色过渡，有自定义头图时再叠一层图 */
@@ -169,6 +176,8 @@ async function loadSiteSettings() {
     siteName.value = res.data.siteName || siteName.value
     heroImage.value = res.data.heroImage || ''
     heroText.value = res.data.heroText || ''
+    icpRecordNumber.value = res.data.icpRecordNumber || ''
+    icpRecordEnabled.value = res.data.icpRecordEnabled === true
   } catch {
     // 拿不到站点设置就用内置默认值，不影响首页其它内容
   }
@@ -328,6 +337,19 @@ onBeforeRouteLeave(() => {
         </section>
       </aside>
     </div>
+
+    <footer v-if="showIcpRecord" class="home-footer">
+      <span class="home-footer-divider" aria-hidden="true"></span>
+      <a
+        class="home-footer-link"
+        href="https://beian.miit.gov.cn"
+        target="_blank"
+        rel="noopener noreferrer"
+        :aria-label="`在工信部备案查询平台查询备案号：${icpRecordNumber}`"
+      >
+        备案号：{{ icpRecordNumber }}
+      </a>
+    </footer>
   </div>
 </template>
 
@@ -383,6 +405,46 @@ onBeforeRouteLeave(() => {
   grid-template-areas: 'tools content todo';
   gap: clamp(18px, 2vw, 26px);
   min-height: 0;
+}
+
+.home-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(1320px, 100%);
+  margin: clamp(28px, 4vh, 48px) auto 0;
+  padding: 0 clamp(16px, 3vw, 46px);
+  color: var(--text-muted, rgba(74, 54, 41, 0.58));
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.home-footer-divider {
+  width: 32px;
+  height: 1px;
+  background: var(--panel-border, rgba(var(--accent-brown-rgb), 0.14));
+}
+
+.home-footer-link {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.home-footer-link:hover,
+.home-footer-link:focus-visible {
+  color: var(--accent-brown, #9b6846);
+  text-decoration: underline;
+}
+
+.home-footer-link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--accent-brown, #9b6846);
+  outline-offset: 3px;
 }
 
 .tool-panel {

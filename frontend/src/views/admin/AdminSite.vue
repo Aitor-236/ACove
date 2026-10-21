@@ -11,6 +11,8 @@ interface SiteSetting {
   heroText: string
   /** 站点图标相对地址，空字符串表示使用默认图标 */
   siteIcon: string
+  icpRecordNumber: string
+  icpRecordEnabled: boolean
 }
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
@@ -27,15 +29,24 @@ const CROP_MAX_SCALE = 4
 const loading = ref(false)
 /** 设置没读出来时不给空表单，直接提示重新加载，免得看着像"值没了" */
 const loadError = ref(false)
-const settings = ref<SiteSetting>({ siteName: '', heroImage: '', heroText: '', siteIcon: '' })
+const settings = ref<SiteSetting>({
+  siteName: '',
+  heroImage: '',
+  heroText: '',
+  siteIcon: '',
+  icpRecordNumber: '',
+  icpRecordEnabled: false
+})
 
 const siteNameFormRef = ref<FormInstance>()
 const heroTextFormRef = ref<FormInstance>()
 /** 每一项各管各的表单，进来先把当前值填进去，保存时也只提交这一项 */
 const siteNameForm = ref({ siteName: '' })
 const heroTextForm = ref({ heroText: '' })
+const icpRecordForm = ref({ icpRecordNumber: '', icpRecordEnabled: false })
 const savingSiteName = ref(false)
 const savingHeroText = ref(false)
+const savingIcpRecord = ref(false)
 
 const heroInputRef = ref<HTMLInputElement | null>(null)
 /** 已经裁好但还没上传的头图，以及它的本地预览地址 */
@@ -118,10 +129,16 @@ function applySettings(data: SiteSetting) {
     siteName: data.siteName,
     heroImage: data.heroImage || '',
     heroText: data.heroText || '',
-    siteIcon: data.siteIcon || ''
+    siteIcon: data.siteIcon || '',
+    icpRecordNumber: data.icpRecordNumber || '',
+    icpRecordEnabled: data.icpRecordEnabled === true
   }
   siteNameForm.value = { siteName: data.siteName }
   heroTextForm.value = { heroText: data.heroText || '' }
+  icpRecordForm.value = {
+    icpRecordNumber: data.icpRecordNumber || '',
+    icpRecordEnabled: data.icpRecordEnabled === true
+  }
   localStorage.setItem('siteName', data.siteName)
   window.dispatchEvent(new Event('site-settings-updated'))
 }
@@ -158,6 +175,33 @@ async function saveHeroText() {
     // 业务失败由 request 拦截器弹出提示，保留输入方便修改
   } finally {
     savingHeroText.value = false
+  }
+}
+
+async function saveIcpRecord() {
+  const icpRecordNumber = icpRecordForm.value.icpRecordNumber.trim()
+  if (icpRecordNumber.length > 100) {
+    ElMessage.warning('ICP备案号不能超过 100 个字符')
+    return
+  }
+  if (icpRecordForm.value.icpRecordEnabled && !icpRecordNumber) {
+    ElMessage.warning('开启首页展示前请先填写ICP备案号')
+    return
+  }
+
+  savingIcpRecord.value = true
+  try {
+    await saveField(
+      {
+        icpRecordNumber,
+        icpRecordEnabled: icpRecordForm.value.icpRecordEnabled
+      },
+      '备案设置已保存'
+    )
+  } catch {
+    // 业务失败由 request 拦截器弹出提示，保留输入方便修改
+  } finally {
+    savingIcpRecord.value = false
   }
 }
 
@@ -657,6 +701,33 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </section>
+
+      <section v-loading="loading" class="admin-panel setting-card">
+        <div class="card-head">
+          <h2 class="card-title">ICP备案号</h2>
+        </div>
+
+        <div class="icp-setting-row">
+          <el-input
+            v-model="icpRecordForm.icpRecordNumber"
+            maxlength="100"
+            placeholder="请输入备案号"
+            show-word-limit
+            @keyup.enter="saveIcpRecord"
+          />
+
+          <label class="icp-setting-toggle">
+            <span>首页显示</span>
+            <el-switch v-model="icpRecordForm.icpRecordEnabled" aria-label="首页显示备案号" />
+          </label>
+        </div>
+
+        <div class="card-footer">
+          <el-button type="primary" :loading="savingIcpRecord" @click="saveIcpRecord">
+            保存备案设置
+          </el-button>
+        </div>
+      </section>
     </template>
 
     <!-- 选好原图先在这里框选成 16:9 的横图，再走上传流程 -->
@@ -739,6 +810,28 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: flex-end;
   max-width: 520px;
+}
+
+.icp-setting-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  max-width: 520px;
+}
+
+.icp-setting-row :deep(.el-input) {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+
+.icp-setting-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-body);
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .hero-row {
