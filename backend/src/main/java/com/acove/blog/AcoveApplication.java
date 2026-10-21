@@ -17,8 +17,9 @@ public class AcoveApplication {
 		if (Arrays.asList(args).contains(BACKFILL_ARGUMENT)) {
 			String uploadDirectory = System.getenv().getOrDefault("BLOG_UPLOAD_DIR", "./uploads");
 			ImageThumbnailService.BackfillSummary summary = ImageThumbnailService.backfill(Path.of(uploadDirectory));
-			System.out.printf("Image thumbnail backfill: %d originals scanned, %d variants created, %d failures.%n",
-					summary.originalsVisited(), summary.variantsGenerated(), summary.failures());
+			System.out.printf("Image thumbnail backfill: %d originals scanned, %d variants created, %d variants repaired, %d temporary files cleaned, %d failures.%n",
+					summary.originalsVisited(), summary.variantsGenerated(), summary.variantsRepaired(),
+					summary.temporaryFilesCleaned(), summary.failures());
 			if (summary.failures() > 0) {
 				System.exit(1);
 			}

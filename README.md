@@ -433,7 +433,7 @@ docker compose exec -T mysql sh -c \
 2. 使用 [主机 Nginx 配置示例](frontend/nginx.host.conf.example)，将 `root` 改为实际前端发布目录，再放入主机 Nginx 的站点配置目录。示例使用 `default_server` 与 `server_name _`，没有域名也能通过服务器 IP 的 HTTP 地址访问；如主机已有默认站点，先停用它，避免重复的 `default_server`。有域名时可改为实际域名。`/api/` 会反代到 `127.0.0.1:8080` 并去掉前缀；此配置不依赖 Docker 的 `backend` 主机名或 `127.0.0.11` DNS。执行 `sudo nginx -t` 检查配置后重载 Nginx。
 3. 需要 HTTPS 时，先确认域名已指向服务器，再在主机上通过 Certbot 的 Nginx 集成签发证书并启用 HTTPS。主机部署不使用上面 Docker 部署的证书挂载与容器重载钩子。
 4. 生产环境设置独立的 `jwt.secret-key` 和 MySQL 密码。前端使用 history 模式，示例已配置找不到文件时回退到 `index.html`；上传目录也要可写并持久化，建议把 `blog.upload.dir` 设为主机上的固定绝对路径。
-5. 首次部署此版本后，为现有图片生成缩略图：`BLOG_UPLOAD_DIR=/你的上传目录 java -jar acove-backend.jar --backfill-image-thumbnails`。重复运行只补缺失文件。
+5. 首次部署此版本时，先停止后端并暂停所有上传／补图进程，备份上传目录，再为现有图片离线生成缩略图：`BLOG_UPLOAD_DIR=/你的上传目录 java -jar acove-backend.jar --backfill-image-thumbnails`。重复运行会跳过有效派生图，补齐缺失文件并修复零字节、损坏、格式或长边尺寸错误的派生图；原图不变。命令会先清理 `article`、`gallery` 内保留前缀 `.acove-thumb-` 的历史临时文件及其误生成派生图，汇总新建、修复、清理及失败数量，存在失败时退出码为 1。完成后再启动后端；不要与在线上传并行执行。
 
 ## 说明与待办
 
