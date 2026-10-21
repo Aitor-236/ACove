@@ -429,7 +429,7 @@ defineExpose({
   height: clamp(460px, 66vh, 780px);
   /* 中缝露出来的底色：两栏各让 6px，缝里是米白，读起来是「两块 + 一道缝」，
      而不是贴在一起的两条描边 */
-  background: var(--bg-cream, #f6f1e7);
+  background: var(--bg-cream, #faf7f0);
 }
 
 .split-editor.is-stacked :deep(.el-splitter) {

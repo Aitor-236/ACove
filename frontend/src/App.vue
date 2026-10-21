@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
     'Microsoft YaHei',
     sans-serif;
   --el-font-family: var(--font-family-ui);
-  --bg-cream: #f6f1e7;
+  --bg-cream: #faf7f0;
   --accent-brown: #9b6846;
   --accent-brown-rgb: 155, 104, 70;
   --accent-brown-soft: #b98a5e;

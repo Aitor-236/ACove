@@ -122,7 +122,7 @@ const heroTitle = computed(() => heroText.value.trim() || siteName.value.trim() 
 /** 首页头图背景：统一压暗层（保证白字可读）+ 底部向页面底色过渡，有自定义头图时再叠一层图 */
 const heroBackground = computed(() => {
   const layers = [
-    'linear-gradient(to bottom, rgba(246, 241, 231, 0) 55%, var(--bg-cream, #f6f1e7) 100%)',
+    'linear-gradient(to bottom, rgba(250, 247, 240, 0) 55%, var(--bg-cream, #faf7f0) 100%)',
     'linear-gradient(rgba(63, 46, 34, 0.55), rgba(63, 46, 34, 0.55))'
   ]
   if (heroImage.value) {
@@ -341,7 +341,7 @@ onBeforeRouteLeave(() => {
   overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  background: var(--bg-cream, #f6f1e7);
+  background: var(--bg-cream, #faf7f0);
 }
 
 .home-page::-webkit-scrollbar {
