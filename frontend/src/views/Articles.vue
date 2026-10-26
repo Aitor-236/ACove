@@ -165,6 +165,8 @@ async function loadArticles() {
       syncQuery(true)
       return
     }
+    // 先移除加载占位，让真实列表撑开页面高度，再恢复位置。
+    loading.value = false
     await restoreScroll(requestId)
   } catch {
     if (requestId !== articleRequestId) return
