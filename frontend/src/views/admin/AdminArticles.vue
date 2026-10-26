@@ -10,6 +10,7 @@ interface AdminArticleItem {
   title: string
   summary: string
   categoryName: string
+  categorySlug: string
   status: 'draft' | 'published'
   publishedAt: string | null
   readingMinutes: number | null
@@ -140,8 +141,14 @@ function goEdit(row: AdminArticleItem) {
 }
 
 /** 点文章列表里的分类徽标就按这个分类筛选，和分类管理跳过来是同一套参数。 */
+function categoryLabel(category: CategoryItem) {
+  return categories.value.some((other) => other.id !== category.id && other.name === category.name)
+    ? `${category.name}（${category.slug}）`
+    : category.name
+}
+
 function filterByCategory(row: AdminArticleItem) {
-  const matched = categories.value.find((category) => category.name === row.categoryName)
+  const matched = categories.value.find((category) => category.slug === row.categorySlug)
   if (!matched) {
     ElMessage.warning('分类信息还没加载出来，刷新一下再试')
     return
@@ -277,7 +284,7 @@ onMounted(async () => {
         <el-option
           v-for="category in categories"
           :key="category.slug"
-          :label="category.name"
+          :label="categoryLabel(category)"
           :value="category.slug"
         />
       </el-select>

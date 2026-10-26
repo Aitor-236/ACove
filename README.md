@@ -199,8 +199,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 | --- | --- | --- |
 | GET | `/admin/article/list` | 文章列表（含草稿），支持状态 / 分类 / 关键字筛选 |
 | GET | `/admin/article/{id}` | 文章详情，供编辑页回显 |
-| POST | `/admin/article/create` | 新建文章，保存为草稿；`tags` 传标签名数组，库里没有的标签会自动创建 |
-| POST | `/admin/article/update` | 更新文章，局部更新（只改传入的字段）；`tags` 为 null 表示不改标签，传数组则整体覆盖 |
+| POST | `/admin/article/create` | 新建文章，保存为草稿；分类优先传 `categoryId`（旧 `categoryName` 兼容，重名时报错）；`tags` 传标签名数组，库里没有的标签会自动创建 |
+| POST | `/admin/article/update` | 更新文章，局部更新（未传分类时保留原分类，分类参数同 create）；`tags` 为 null 表示不改标签，传数组则整体覆盖 |
 | POST | `/admin/article/delete` | 删除：已发布→撤回为草稿，草稿→物理删除 |
 | POST | `/admin/article/publish` | 发布文章 |
 | POST | `/admin/article/unpublish` | 撤回为草稿 |

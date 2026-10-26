@@ -11,6 +11,8 @@ public class ArticleDTO {
     private String title;
     private String summary;
     private String content;
+    /** 稳定分类标识，新客户端优先提交；categoryName 保留兼容旧请求。 */
+    private Long categoryId;
     private String categoryName;
 
     /**

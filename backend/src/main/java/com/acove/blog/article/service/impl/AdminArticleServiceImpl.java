@@ -60,7 +60,11 @@ public class AdminArticleServiceImpl implements AdminArticleService {
         }
 
         if (StringUtils.hasText(category)) {
-            ArticleCategory matched = resolveCategory(category);
+            ArticleCategory matched = articleCategoryMapper.selectOne(
+                    new LambdaQueryWrapper<ArticleCategory>().eq(ArticleCategory::getSlug, category.trim()));
+            if (matched == null) {
+                matched = resolveCategory(category);
+            }
             if (matched == null) {
                 return articleVOAssembler.emptyPage(page, size);
             }
@@ -88,7 +92,7 @@ public class AdminArticleServiceImpl implements AdminArticleService {
             throw new BusinessException("无法获取当前登录用户，请重新登录");
         }
 
-        ArticleCategory category = resolveCategory(articleDTO.getCategoryName());
+        ArticleCategory category = resolveCategory(articleDTO);
         if (category == null) {
             throw new BusinessException("文章分类不存在");
         }
@@ -113,25 +117,37 @@ public class AdminArticleServiceImpl implements AdminArticleService {
         return loadArticleVO(article.getId());
     }
 
-    /**
-     * 根据分类名称（或英文标识）查询分类，未提供分类名称时返回 null。
-     */
+    /** ID 是写入分类的首选，不存在时直接拒绝，不能回退到同名分类。 */
+    private ArticleCategory resolveCategory(ArticleDTO articleDTO) {
+        if (articleDTO.getCategoryId() != null) {
+            ArticleCategory category = articleDTO.getCategoryId() > 0
+                    ? articleCategoryMapper.selectById(articleDTO.getCategoryId()) : null;
+            if (category == null) {
+                throw new BusinessException("文章分类不存在");
+            }
+            return category;
+        }
+        return resolveCategory(articleDTO.getCategoryName());
+    }
+
+    /** 兼容旧客户端名称请求；名称有歧义时要求使用 ID，禁止任取第一条。 */
     private ArticleCategory resolveCategory(String categoryName) {
         if (!StringUtils.hasText(categoryName)) {
             return null;
         }
         String keyword = categoryName.trim();
-        ArticleCategory category = articleCategoryMapper.selectOne(
+        List<ArticleCategory> categories = articleCategoryMapper.selectList(
                 new LambdaQueryWrapper<ArticleCategory>()
                         .eq(ArticleCategory::getName, keyword)
-                        .last("limit 1"));
-        if (category == null) {
-            category = articleCategoryMapper.selectOne(
-                    new LambdaQueryWrapper<ArticleCategory>()
-                            .eq(ArticleCategory::getSlug, keyword)
-                            .last("limit 1"));
+                        .last("limit 2"));
+        if (categories.size() > 1) {
+            throw new BusinessException("分类名称存在重名，请使用分类ID");
         }
-        return category;
+        if (!categories.isEmpty()) {
+            return categories.getFirst();
+        }
+        return articleCategoryMapper.selectOne(
+                new LambdaQueryWrapper<ArticleCategory>().eq(ArticleCategory::getSlug, keyword));
     }
 
     @Override
@@ -157,8 +173,8 @@ public class AdminArticleServiceImpl implements AdminArticleService {
         if (articleDTO.getContent() != null) {
             article.setContentMarkdown(articleDTO.getContent());
         }
-        if (StringUtils.hasText(articleDTO.getCategoryName())) {
-            ArticleCategory category = resolveCategory(articleDTO.getCategoryName());
+        if (articleDTO.getCategoryId() != null || StringUtils.hasText(articleDTO.getCategoryName())) {
+            ArticleCategory category = resolveCategory(articleDTO);
             if (category == null) {
                 throw new BusinessException("文章分类不存在");
             }
@@ -303,7 +319,7 @@ public class AdminArticleServiceImpl implements AdminArticleService {
             return null;
         }
         ArticleCategory category = loadCategory(article.getCategoryId());
-        ArticleVO vo = ArticleVO.from(article, category == null ? null : category.getName());
+        ArticleVO vo = ArticleVO.from(article, category);
         vo.setTags(articleTagMapper.selectTagNamesByArticleId(id));
         return vo;
     }
