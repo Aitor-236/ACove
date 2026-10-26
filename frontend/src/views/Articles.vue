@@ -5,7 +5,7 @@ let savedScrollTop = 0
 </script>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 
@@ -15,6 +15,7 @@ interface ArticleItem {
   title: string
   summary: string
   categoryName: string
+  categorySlug: string
   /** 列表卡片显示更新时间和详情页保持一致 */
   updatedAt: string | null
   readingMinutes: number
@@ -68,6 +69,8 @@ const page = ref(1)
 const total = ref(0)
 const loading = ref(false)
 const errorMessage = ref('')
+let articleRequestId = 0
+onBeforeUnmount(() => { articleRequestId += 1 })
 
 const totalArticles = computed(() =>
   categories.value.reduce((sum, category) => sum + category.articleCount, 0)
@@ -139,10 +142,12 @@ async function loadTags() {
 }
 
 async function loadArticles() {
+  const requestId = ++articleRequestId
   loading.value = true
   errorMessage.value = ''
   try {
     const res = (await request.get('/article/list', {
+      silent: true,
       params: {
         page: page.value,
         size: PAGE_SIZE,
@@ -152,14 +157,16 @@ async function loadArticles() {
       }
     })) as { data: ArticlePage }
 
+    if (requestId !== articleRequestId) return
     articles.value = res.data.records
     total.value = res.data.total
   } catch {
+    if (requestId !== articleRequestId) return
     articles.value = []
     total.value = 0
     errorMessage.value = '文章加载失败，请稍后重试。'
   } finally {
-    loading.value = false
+    if (requestId === articleRequestId) loading.value = false
   }
 }
 
@@ -206,14 +213,6 @@ function applyTagFilter(name: string) {
   page.value = 1
   syncQuery()
   void loadArticles()
-}
-
-/** 文章卡片上的分类徽标只有名称，这里按名称换回 slug 再筛选 */
-function selectCategoryByName(name: string) {
-  const matched = categories.value.find((category) => category.name === name)
-  if (matched) {
-    selectCategory(matched.slug)
-  }
 }
 
 function clearTagFilter() {
@@ -372,7 +371,7 @@ onBeforeRouteLeave(() => {
                   type="button"
                   class="card-tag"
                   :title="`只看「${article.categoryName}」分类`"
-                  @click.prevent="selectCategoryByName(article.categoryName)"
+                  @click.prevent="selectCategory(article.categorySlug)"
                 >
                   {{ article.categoryName }}
                 </button>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ElImageViewer } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
@@ -32,6 +32,8 @@ const article = ref<ArticleDetail | null>(null)
 const loading = ref(false)
 const errorMessage = ref('')
 const previewImage = ref('')
+let articleRequestId = 0
+onBeforeUnmount(() => { articleRequestId += 1 })
 
 function handleContentClick(event: MouseEvent) {
   handleCodeGroupClick(event)
@@ -67,16 +69,20 @@ function goBack() {
 }
 
 async function loadArticle(id: string) {
+  const requestId = ++articleRequestId
   loading.value = true
   errorMessage.value = ''
   article.value = null
+  previewImage.value = ''
   try {
-    const res = (await request.get(`/article/detail/${id}`)) as { data: ArticleDetail }
+    const res = (await request.get(`/article/detail/${encodeURIComponent(id)}`, { silent: true })) as { data: ArticleDetail }
+    if (requestId !== articleRequestId) return
     article.value = res.data
   } catch {
+    if (requestId !== articleRequestId) return
     errorMessage.value = '这篇文章不存在，或者还没有发布。'
   } finally {
-    loading.value = false
+    if (requestId === articleRequestId) loading.value = false
   }
 }
 
