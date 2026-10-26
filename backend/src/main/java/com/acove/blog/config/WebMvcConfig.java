@@ -32,6 +32,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 "/article/detail/**",          // public article detail
                 "/category/list",              // public category list
                 "/tag/list",                   // public tag list（前台标签面板）
+                "/site/page-head",             // public HTML metadata fragment for Nginx SSI
                 "/site/owner",                 // public site owner profile
                 "/site/settings",              // public site settings（网站名 / 站点图标 / 首页头图 / 首页文字 / ICP 备案信息）
                 "/site/profile-page",          // public personal introduction content

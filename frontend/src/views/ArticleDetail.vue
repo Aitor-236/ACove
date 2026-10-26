@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ElImageViewer } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
+import { usePageMetadata } from '@/composables/usePageMetadata'
 import { renderMarkdown } from '@/utils/markdown'
 import { handleCodeGroupClick, handleCodeGroupKeydown } from '@/utils/codeBlock'
 import {
@@ -79,6 +80,8 @@ async function loadArticle(id: string) {
     loading.value = false
   }
 }
+
+usePageMetadata(() => ({ title: article.value?.title, description: article.value?.summary, type: 'article', noindex: !article.value }))
 
 // 支持从列表进入详情以及直接刷新详情链接
 watch(

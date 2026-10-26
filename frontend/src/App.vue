@@ -1,39 +1,57 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted } from 'vue'
+import { computed, onBeforeUnmount, onMounted, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 import DockNav from '@/components/DockNav.vue'
-import request from '@/utils/request'
+import { useSiteSettings } from '@/composables/useSiteSettings'
+import { detailMetadata, updateMeta } from '@/composables/usePageMetadata'
 
 const route = useRoute()
-
-// 登录页和后台管理都有独立布局，不显示前台底部导航
+const { siteName, siteSettings, loadSiteSettings } = useSiteSettings()
 const showDock = computed(() => route.path !== '/login' && !route.path.startsWith('/admin'))
 
-/** 网站名与站点图标由后台「网站设置」维护。 */
-async function loadSiteSettings() {
-  try {
-    const res = (await request.get('/site/settings')) as {
-      data: { siteName: string; siteIcon: string }
+watchEffect(() => {
+  const detail = detailMetadata.value
+  const title = detail?.title ? `${detail.title} | ${siteName.value}` : siteName.value
+  const description = detail?.description ?? siteSettings.value.heroText ?? ''
+  const noindex = route.matched.length === 0 || route.path === '/login' || route.path.startsWith('/admin') || !!detail?.noindex
+  const canonical = new URL(route.path, window.location.origin).href
+  document.title = title
+  updateMeta('name', 'description', description)
+  updateMeta('name', 'robots', noindex ? 'noindex, nofollow' : 'index, follow')
+  updateMeta('property', 'og:site_name', siteName.value)
+  updateMeta('property', 'og:title', title)
+  updateMeta('property', 'og:description', description)
+  updateMeta('property', 'og:type', detail?.type ?? 'website')
+  updateMeta('property', 'og:url', noindex ? '' : canonical)
+  updateMeta('name', 'twitter:card', 'summary_large_image')
+  updateMeta('name', 'twitter:title', title)
+  updateMeta('name', 'twitter:description', description)
+  const image = detail?.image || siteSettings.value.heroImage
+  const imageUrl = !noindex && image?.startsWith('/uploads/')
+    ? new URL(`/api${image}`, window.location.origin).href : ''
+  updateMeta('property', 'og:image', imageUrl)
+  updateMeta('name', 'twitter:image', imageUrl)
+  let link = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')
+  if (!noindex) {
+    if (!link) {
+      link = document.createElement('link')
+      link.rel = 'canonical'
+      document.head.append(link)
     }
-    if (res.data.siteName) {
-      document.title = res.data.siteName
-    }
-    const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]')
-    if (favicon) {
-      const iconUrl = res.data.siteIcon ? `/api${res.data.siteIcon}` : '/favicon.ico'
-      favicon.href = iconUrl
-      favicon.type = iconUrl.toLowerCase().endsWith('.png') ? 'image/png' : 'image/x-icon'
-    }
-  } catch {
-    // 拿不到站点设置就保留 index.html 里的标题和默认图标
+    link.href = canonical
+  } else link?.remove()
+  const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]')
+  if (favicon) {
+    const iconUrl = siteSettings.value.siteIcon ? `/api${siteSettings.value.siteIcon}` : '/favicon.ico'
+    favicon.href = iconUrl
+    favicon.type = iconUrl.toLowerCase().endsWith('.png') ? 'image/png' : 'image/x-icon'
   }
-}
+})
 
 onMounted(() => {
   void loadSiteSettings()
   window.addEventListener('site-settings-updated', loadSiteSettings)
 })
-
 onBeforeUnmount(() => {
   window.removeEventListener('site-settings-updated', loadSiteSettings)
 })

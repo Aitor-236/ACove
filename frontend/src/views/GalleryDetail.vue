@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
 import request from '@/utils/request'
+import { usePageMetadata } from '@/composables/usePageMetadata'
 import { imageSource, thumbnailSource } from '@/utils/imageUrls'
 
 interface GalleryImage {
@@ -57,6 +58,8 @@ async function loadGallery() {
     loading.value = false
   }
 }
+
+usePageMetadata(() => ({ title: gallery.value?.name, description: gallery.value?.description, image: gallery.value?.coverImage, noindex: !gallery.value }))
 
 watch(() => route.params.id, loadGallery, { immediate: true })
 </script>
