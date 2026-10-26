@@ -16,6 +16,7 @@ test('article filters keep the latest response, error and loading state', async 
   const ctx = await mountView(component, '/articles', '/articles')
   const s = ctx.state
   s.selectCategory('B')
+  await settle()
   pending[0].resolve({ data: { records: [{ id: 1 }], total: 1 } })
   await settle()
   assert.equal(s.loading, true, 'an old response must not stop the current loading indicator')
@@ -25,7 +26,9 @@ test('article filters keep the latest response, error and loading state', async 
   assert.equal(s.articles[0].id, 2)
   assert.equal(s.total, 2)
   s.selectCategory('C')
+  await settle()
   s.selectCategory('D')
+  await settle()
   pending[3].resolve({ data: { records: [{ id: 4 }], total: 4 } })
   await settle()
   pending[2].reject(Error('obsolete request failed'))

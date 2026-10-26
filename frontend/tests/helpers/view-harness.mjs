@@ -18,6 +18,8 @@ export const deferred = () => {
 
 export async function settle() {
   for (let i = 0; i < 16; i++) { await Promise.resolve(); await nextTick() }
+  await new Promise(resolve => setImmediate(resolve))
+  await nextTick()
 }
 
 export async function compileView(name, request, extraDependencies = {}) {
@@ -53,6 +55,9 @@ export async function mountView(component, path, pattern, otherRoutes = []) {
   app.use(router)
   app.mount({})
   await settle()
-  const state = app._instance.subTree.component.subTree.component.setupState
-  return { router, state, close: () => app.unmount() }
+  return {
+    router,
+    get state() { return app._instance.subTree.component.subTree.component.setupState },
+    close: () => app.unmount()
+  }
 }
