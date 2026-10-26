@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import {
   ElInput,
   ElMessage,
@@ -150,6 +150,10 @@ const editing = ref(true)
 /** 已落库的分类 / 标签快照：这两项不自动保存，靠它判断还有没有必须手动保存的改动 */
 const savedMeta = reactive({ categoryName: '', tags: [] as string[] })
 
+/** 路由切换或卸载后，旧请求不得回填当前编辑器。 */
+let editorSession = 0
+let detailRequest = 0
+
 const isEditMode = computed(() => articleId.value !== null)
 
 function formatDateTime(value?: string | null) {
@@ -250,13 +254,17 @@ function rememberSavedMeta() {
 
 /**
  * 拉取文章详情回填表单；enterPreview 为 true 时回到只读预览态
- * （首次进来和切换文章都要，发布 / 取消发布后不打断当前编辑）。
+ * （首次进来和切换文章都要，发布后不打断当前编辑）。
  */
 async function loadDetail(id: string, { enterPreview = false }: { enterPreview?: boolean } = {}) {
+  const session = editorSession
+  const requestId = ++detailRequest
+  const isCurrent = () => session === editorSession && requestId === detailRequest
   loading.value = true
   hydrating.value = true
   try {
     const res = (await request.get(`/admin/article/${id}`)) as { data: AdminArticleDetail }
+    if (!isCurrent()) return
     const detail = res.data
     articleId.value = detail.id
     status.value = detail.status
@@ -275,13 +283,16 @@ async function loadDetail(id: string, { enterPreview = false }: { enterPreview?:
       editing.value = false
     }
   } catch {
+    if (!isCurrent()) return
     ElMessage.error('文章不存在或已被删除')
     await router.replace('/admin/articles')
   } finally {
-    loading.value = false
+    if (isCurrent()) loading.value = false
   }
+  if (!isCurrent()) return
   // 等表单 watcher 跑完再解除标记，否则回填会被记成一次未保存修改
   await nextTick()
+  if (!isCurrent()) return
   hydrating.value = false
   dirty.value = false
 }
@@ -546,6 +557,8 @@ async function publishArticle() {
 /** 取消发布：内容保留，文章从前台下线回退为草稿。 */
 async function unpublishArticle() {
   if (articleId.value === null) return
+  const id = articleId.value
+  const session = editorSession
 
   try {
     await ElMessageBox.confirm(
@@ -557,25 +570,50 @@ async function unpublishArticle() {
     return
   }
 
+  if (session !== editorSession) return
   unpublishing.value = true
   try {
-    await request.post('/admin/article/unpublish', null, { params: { id: articleId.value } })
+    const res = (await request.post('/admin/article/unpublish', null, { params: { id } })) as {
+      data: Pick<AdminArticleDetail, 'status' | 'updatedAt' | 'publishedAt'>
+    }
+    if (session !== editorSession) return
+    // 只更新发布信息，保留本地表单、保存快照和自动保存队列。
+    status.value = res.data.status
+    meta.updatedAt = res.data.updatedAt ?? ''
+    meta.publishedAt = res.data.publishedAt ?? ''
     ElMessage.success('已取消发布，文章回退为草稿')
-    await loadDetail(String(articleId.value), { enterPreview: false })
+  } catch {
+    // 请求拦截器提示失败；本地表单和发布状态保持不变。
   } finally {
-    unpublishing.value = false
+    if (session === editorSession) unpublishing.value = false
   }
 }
 
-// 自己保存后 replace 的地址不重复拉取，避免覆盖正在输入的内容
-watch(
-  () => route.params.id,
-  (id) => {
-    const next = typeof id === 'string' && id ? id : ''
-    if (!next || String(articleId.value) === next) return
-    void loadDetail(next, { enterPreview: true })
+/** 首次进入和复用组件切换路由共用同一套初始化。 */
+async function initializeEditor(id: string) {
+  const session = ++editorSession
+  hydrating.value = true
+  resetAutoSave()
+  articleId.value = null
+  status.value = 'draft'
+  Object.assign(form, { title: '', summary: '', categoryName: '', content: '', tags: [] })
+  Object.assign(meta, { createdAt: '', updatedAt: '', publishedAt: '' })
+  rememberSavedMeta()
+  dirty.value = false
+  editing.value = !id
+  loading.value = false
+  unpublishing.value = false
+  categoryDialogVisible.value = false
+  tagDialogVisible.value = false
+  await nextTick()
+  if (session !== editorSession) return
+  formRef.value?.clearValidate()
+  if (id) {
+    await loadDetail(id, { enterPreview: true })
+  } else {
+    hydrating.value = false
   }
-)
+}
 
 watch(
   form,
@@ -586,7 +624,7 @@ watch(
   { deep: true }
 )
 
-onBeforeRouteLeave(async () => {
+async function confirmLeave() {
   if (!dirty.value && !autoSavePending.value) return true
 
   // 先把排队中的自动保存跑完；能存下去、也没有必须手动保存的改动，就直接放行
@@ -609,7 +647,24 @@ onBeforeRouteLeave(async () => {
   } catch {
     return false
   }
+}
+
+onBeforeRouteLeave(confirmLeave)
+onBeforeRouteUpdate((to) => {
+  // 新建保存后的内部地址替换不触发 flush，避免等待自身的自动保存。
+  if (String(articleId.value) === to.params.id) return true
+  return confirmLeave()
 })
+
+watch(
+  () => route.params.id,
+  (id) => {
+    const next = typeof id === 'string' ? id : ''
+    if (next && String(articleId.value) === next) return
+    void initializeEditor(next)
+  },
+  { immediate: true }
+)
 
 /** 关标签页 / 刷新时浏览器原生的离开确认 */
 function handleBeforeUnload(event: BeforeUnloadEvent) {
@@ -621,18 +676,12 @@ function handleBeforeUnload(event: BeforeUnloadEvent) {
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   await Promise.all([loadCategories(), loadTags()])
-  const id = typeof route.params.id === 'string' ? route.params.id : ''
-  if (id) {
-    // 已有文章先给只读预览，点「编辑」再动内容
-    await loadDetail(id, { enterPreview: true })
-  } else {
-    // 新建页没有可预览的东西，直接可写
-    editing.value = true
-  }
-  dirty.value = false
 })
 
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+onBeforeUnmount(() => {
+  editorSession += 1
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
 </script>
 
 <template>
