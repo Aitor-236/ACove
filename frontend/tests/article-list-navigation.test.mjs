@@ -90,3 +90,24 @@ test('invalid pages default to one and pages beyond the remaining results are co
   assert.equal(ctx.router.currentRoute.value.query.keyword, 'test')
   ctx.close()
 })
+
+test('submitting the same search retries a transient failure without changing the URL', async () => {
+  let failing = true
+  let attempts = 0
+  const component = await compileView('Articles', { async get(url) {
+    if (url !== '/article/list') return { data: [] }
+    attempts++
+    if (failing) throw Error('temporary failure')
+    return { data: { records: [{ id: 1 }], total: 1 } }
+  } })
+  const ctx = await mountView(component, '/articles', '/articles')
+  assert.ok(ctx.state.errorMessage)
+  failing = false
+  ctx.state.applySearch()
+  await settle()
+  assert.equal(attempts, 2)
+  assert.equal(ctx.state.errorMessage, '')
+  assert.equal(ctx.state.articles[0].id, 1)
+  assert.equal(ctx.router.currentRoute.value.fullPath, '/articles')
+  ctx.close()
+})
