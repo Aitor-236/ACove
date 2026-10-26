@@ -26,7 +26,12 @@ export async function compileView(name, request, extraDependencies = {}) {
   const { descriptor } = parse(readFileSync(new URL(`../../src/views/${name}.vue`, import.meta.url), 'utf8'))
   const source = compileScript(descriptor, { id: `view-test-${nextModule}` }).content
   const key = `__viewTest${nextModule++}`
-  globalThis[key] = { vue, router: routerApi, request, ...extraDependencies }
+  globalThis[key] = {
+    vue, router: routerApi, request,
+    // Head updates have their own DOM-aware regression suite; this harness isolates view data.
+    '@/composables/usePageMetadata': { usePageMetadata() {} },
+    ...extraDependencies
+  }
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText
   const mocked = js.replace(/import\s+([\s\S]*?)\s+from\s+['"]([^'"]+)['"];?/g, (_, bindings, specifier) => {
     const dep = specifier === 'vue' ? 'vue' : specifier === 'vue-router' ? 'router' : specifier.includes('request') ? 'request' : specifier
