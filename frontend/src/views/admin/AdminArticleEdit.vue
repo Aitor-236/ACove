@@ -68,7 +68,7 @@ const editorRef = ref<InstanceType<typeof MarkdownSplitEditor> | null>(null)
 const form = reactive({
   title: '',
   summary: '',
-  categoryName: '',
+  categoryId: null as number | null,
   content: '',
   tags: [] as string[]
 })
@@ -76,7 +76,7 @@ const form = reactive({
 const rules: FormRules<typeof form> = {
   title: [{ required: true, message: '请输入文章标题', trigger: 'blur' }],
   summary: [{ max: 500, message: '摘要不能超过 500 字', trigger: 'blur' }],
-  categoryName: [{ required: true, message: '请选择文章分类', trigger: 'change' }]
+  categoryId: [{ required: true, message: '请选择文章分类', trigger: 'change' }]
 }
 
 /**
@@ -148,7 +148,19 @@ const titleInputRef = ref<InstanceType<typeof ElInput> | null>(null)
  */
 const editing = ref(true)
 /** 已落库的分类 / 标签快照：这两项不自动保存，靠它判断还有没有必须手动保存的改动 */
-const savedMeta = reactive({ categoryName: '', tags: [] as string[] })
+const savedMeta = reactive({ categoryId: null as number | null, tags: [] as string[] })
+const loadedCategory = ref<{ id: number; name: string } | null>(null)
+const selectedCategoryName = computed(
+  () =>
+    categories.value.find((category) => category.id === form.categoryId)?.name ??
+    (loadedCategory.value?.id === form.categoryId ? loadedCategory.value?.name : '')
+)
+
+function categoryLabel(category: CategoryItem) {
+  return categories.value.some((other) => other.id !== category.id && other.name === category.name)
+    ? `${category.name}（${category.slug}）`
+    : category.name
+}
 
 /** 路由切换或卸载后，旧请求不得回填当前编辑器。 */
 let editorSession = 0
@@ -165,7 +177,7 @@ async function loadCategories() {
     const res = (await request.get('/category/list')) as { data: CategoryItem[] }
     categories.value = res.data
   } catch {
-    // 分类接口失败时仍可手动输入分类名，不阻塞编辑
+    // 保留详情中的分类ID；新建分类仍可通过弹窗完成
     categories.value = []
   }
 }
@@ -203,7 +215,7 @@ async function submitCategory() {
     })) as { data: CategoryItem }
 
     categories.value = [...categories.value, res.data]
-    form.categoryName = res.data.name
+    form.categoryId = res.data.id
     categoryDialogVisible.value = false
     ElMessage.success(`分类「${res.data.name}」已创建`)
   } catch {
@@ -248,7 +260,7 @@ async function submitTag() {
 
 /** 记住当前已落库的分类 / 标签，用来判断「必须手动保存」的元数据有没有改过 */
 function rememberSavedMeta() {
-  savedMeta.categoryName = form.categoryName
+  savedMeta.categoryId = form.categoryId
   savedMeta.tags = [...form.tags]
 }
 
@@ -270,7 +282,9 @@ async function loadDetail(id: string, { enterPreview = false }: { enterPreview?:
     status.value = detail.status
     form.title = detail.title ?? ''
     form.summary = detail.summary ?? ''
-    form.categoryName = detail.categoryName ?? ''
+    form.categoryId = detail.categoryId ?? null
+    loadedCategory.value =
+      detail.categoryId == null ? null : { id: detail.categoryId, name: detail.categoryName ?? '' }
     form.content = detail.content ?? ''
     form.tags = detail.tags ?? []
     meta.createdAt = detail.createdAt ?? ''
@@ -304,7 +318,7 @@ function goBack() {
 /** 分类 / 标签不参与自动保存，改过之后必须点「保存」才会落库 */
 const metaDirty = computed(
   () =>
-    form.categoryName !== savedMeta.categoryName ||
+    form.categoryId !== savedMeta.categoryId ||
     form.tags.join('\u0000') !== savedMeta.tags.join('\u0000')
 )
 
@@ -331,7 +345,7 @@ const {
         // 摘要和正文在库里是 NOT NULL，留空时提交空串
         summary: form.summary ?? '',
         content: form.content ?? ''
-        // 不带 categoryName / tags：这两项只在点「保存」时提交
+        // 不带 categoryId / tags：这两项只在点「保存」时提交
       },
       { silent: true }
     )) as { data: { updatedAt: string | null } }
@@ -344,7 +358,7 @@ const {
     editing.value &&
     !hydrating.value &&
     form.title.trim().length > 0 &&
-    (articleId.value !== null || form.categoryName.trim().length > 0)
+    (articleId.value !== null || form.categoryId !== null)
 })
 
 /** 编辑态里只有这三个文本字段会触发自动保存 */
@@ -355,7 +369,7 @@ watch([() => form.title, () => form.summary, () => form.content], () => {
 
 /** 新建态：分类选好之后，把刚才排队等着的第一次保存补上 */
 watch(
-  () => form.categoryName,
+  () => form.categoryId,
   () => {
     if (hydrating.value || articleId.value !== null || !editing.value) return
     scheduleAutoSave()
@@ -423,7 +437,7 @@ function buildPayload() {
     // 摘要和正文在库里是 NOT NULL，留空时提交空串而不是 undefined
     summary: form.summary ?? '',
     content: form.content ?? '',
-    categoryName: form.categoryName,
+    categoryId: form.categoryId,
     // 标签整体提交，空数组表示清空这篇文章的标签
     tags: form.tags
   }
@@ -596,7 +610,8 @@ async function initializeEditor(id: string) {
   resetAutoSave()
   articleId.value = null
   status.value = 'draft'
-  Object.assign(form, { title: '', summary: '', categoryName: '', content: '', tags: [] })
+  Object.assign(form, { title: '', summary: '', categoryId: null, content: '', tags: [] })
+  loadedCategory.value = null
   Object.assign(meta, { createdAt: '', updatedAt: '', publishedAt: '' })
   rememberSavedMeta()
   dirty.value = false
@@ -736,9 +751,9 @@ onBeforeUnmount(() => {
       <section v-if="!editing" class="admin-panel editor-panel preview-panel">
         <h2 class="preview-title">{{ form.title || '（未命名）' }}</h2>
 
-        <div v-if="form.categoryName || form.tags.length" class="preview-chips">
-          <span v-if="form.categoryName" class="preview-chip is-category">
-            {{ form.categoryName }}
+        <div v-if="selectedCategoryName || form.tags.length" class="preview-chips">
+          <span v-if="selectedCategoryName" class="preview-chip is-category">
+            {{ selectedCategoryName }}
           </span>
           <span v-for="tag in form.tags" :key="tag" class="preview-chip">{{ tag }}</span>
         </div>
@@ -776,10 +791,10 @@ onBeforeUnmount(() => {
             />
           </el-form-item>
 
-          <el-form-item label="文章分类" prop="categoryName">
+          <el-form-item label="文章分类" prop="categoryId">
             <el-select
               ref="categorySelectRef"
-              v-model="form.categoryName"
+              v-model="form.categoryId"
               class="category-select"
               popper-class="admin-select-popper"
               placeholder="选择文章分类"
@@ -788,9 +803,9 @@ onBeforeUnmount(() => {
             >
               <el-option
                 v-for="category in categories"
-                :key="category.slug"
-                :label="category.name"
-                :value="category.name"
+                :key="category.id"
+                :label="categoryLabel(category)"
+                :value="category.id"
               />
               <template #footer>
                 <button type="button" class="select-create" @click="openCategoryDialog">
