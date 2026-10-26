@@ -183,6 +183,10 @@ function syncQuery(replace = false) {
   if (activeTagName.value) query.tag = activeTagName.value
   if (appliedKeyword.value) query.keyword = appliedKeyword.value
   if (page.value > 1) query.page = String(page.value)
+  if (router.resolve({ path: '/articles', query }).fullPath === route.fullPath) {
+    void loadArticles()
+    return
+  }
   void router[replace ? 'replace' : 'push']({ path: '/articles', query })
 }
 

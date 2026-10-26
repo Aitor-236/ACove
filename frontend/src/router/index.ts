@@ -123,7 +123,9 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(_to, _from, savedPosition) {
+  scrollBehavior(to, _from, savedPosition) {
+    // 列表在异步数据渲染后恢复对应 URL 的位置，避免此处晚一步滚回顶部。
+    if (to.path === '/articles') return false
     // 前进/后退时恢复浏览器记住的滚动位置，普通跳转回到顶部
     return savedPosition ?? { top: 0 }
   }
