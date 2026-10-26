@@ -48,7 +48,7 @@ class AuthServiceImplTest {
         SysUser user = user();
         when(mapper.selectList(any())).thenReturn(List.of(user));
         when(encoder.matches("password", "hash")).thenReturn(true);
-        when(jwt.generateToken(7L, "alice")).thenReturn("token");
+        when(jwt.generateToken(7L, "alice", 3L)).thenReturn("token");
 
         var result = service.login(request(null, "alice@example.com"));
 
@@ -80,7 +80,7 @@ class AuthServiceImplTest {
         service.login(request("alice", "duplicate@example.com"));
 
         verify(mapper, never()).selectList(any());
-        verify(jwt).generateToken(7L, "alice");
+        verify(jwt).generateToken(7L, "alice", 3L);
     }
 
     @Test
@@ -116,6 +116,7 @@ class AuthServiceImplTest {
     private SysUser user() {
         SysUser user = new SysUser();
         user.setId(7L);
+        user.setTokenVersion(3L);
         user.setUsername("alice");
         user.setEmail("alice@example.com");
         user.setPassword("hash");

@@ -44,7 +44,12 @@ request.interceptors.response.use(
         // If the error response code is 401, redirect to login page
         if (error.response?.status === 401) {
             localStorage.removeItem('token');
-            router.push('/login');
+            localStorage.removeItem('username');
+            localStorage.removeItem('email');
+            const current = router.currentRoute.value;
+            if (current.path !== '/login') {
+                void router.replace({ path: '/login', query: { redirect: current.fullPath } });
+            }
             ElMessage.error('Session expired, please log in again');
         } else if (!error.config?.silent) {
             ElMessage.error(error.message || 'Network error');

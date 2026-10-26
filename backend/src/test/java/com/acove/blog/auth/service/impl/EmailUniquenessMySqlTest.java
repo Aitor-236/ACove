@@ -11,6 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.apache.ibatis.datasource.unpooled.UnpooledDataSource;
+import org.apache.ibatis.mapping.Environment;
+import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import com.acove.blog.auth.mapper.SysUserMapper;
+import com.baomidou.mybatisplus.core.MybatisConfiguration;
+import com.baomidou.mybatisplus.core.MybatisSqlSessionFactoryBuilder;
+
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.FlywayException;
 import org.junit.jupiter.api.AfterEach;
@@ -54,7 +61,7 @@ class EmailUniquenessMySqlTest {
     void fullMigrationChainCreatesUniqueEmailIndex() throws SQLException {
         flyway("latest").migrate();
 
-        assertEquals(List.of("7"), rows("SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1"));
+        assertEquals(List.of("10"), rows("SELECT version FROM flyway_schema_history ORDER BY installed_rank DESC LIMIT 1"));
         assertEquals(List.of("uk_email\t0\temail"), rows("SELECT INDEX_NAME, NON_UNIQUE, COLUMN_NAME "
                 + "FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
                 + "AND TABLE_NAME = 'sys_user' AND INDEX_NAME = 'uk_email'"));
@@ -68,12 +75,13 @@ class EmailUniquenessMySqlTest {
     void cleanV6UpgradePreservesAccountsAndArticleAuthor() throws SQLException {
         flyway("6").migrate();
         seed("bob@example.com");
-        List<String> users = rows("SELECT * FROM sys_user ORDER BY id");
+        List<String> users = rows("SELECT id,username,email,password,avatar,role,create_time FROM sys_user ORDER BY id");
         List<String> articles = rows("SELECT * FROM article ORDER BY id");
 
         flyway("latest").migrate();
 
-        assertEquals(users, rows("SELECT * FROM sys_user ORDER BY id"));
+        assertEquals(users, rows("SELECT id,username,email,password,avatar,role,create_time FROM sys_user ORDER BY id"));
+        assertEquals(List.of("0", "0"), rows("SELECT token_version FROM sys_user ORDER BY id"));
         assertEquals(articles, rows("SELECT * FROM article ORDER BY id"));
     }
 
@@ -82,7 +90,7 @@ class EmailUniquenessMySqlTest {
     void duplicateV6DataBlocksMigrationUntilAdminAssignsDistinctEmail(String duplicate) throws SQLException {
         flyway("6").migrate();
         seed(duplicate);
-        List<String> users = rows("SELECT * FROM sys_user ORDER BY id");
+        List<String> users = rows("SELECT id,username,email,password,avatar,role,create_time FROM sys_user ORDER BY id");
         List<String> articles = rows("SELECT * FROM article ORDER BY id");
         List<String> identities = rows("SELECT id, username, password, role, create_time FROM sys_user ORDER BY id");
 
@@ -90,7 +98,7 @@ class EmailUniquenessMySqlTest {
                 + "(SELECT email FROM sys_user GROUP BY email HAVING COUNT(*) > 1) d "
                 + "ON u.email = d.email ORDER BY u.email, u.id").size());
         assertThrows(FlywayException.class, () -> flyway("latest").migrate());
-        assertEquals(users, rows("SELECT * FROM sys_user ORDER BY id"));
+        assertEquals(users, rows("SELECT id,username,email,password,avatar,role,create_time FROM sys_user ORDER BY id"));
         assertEquals(List.of("0"), rows("SELECT COUNT(*) FROM information_schema.STATISTICS "
                 + "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sys_user' AND INDEX_NAME='uk_email'"));
 
@@ -100,6 +108,25 @@ class EmailUniquenessMySqlTest {
 
         assertEquals(identities, rows("SELECT id, username, password, role, create_time FROM sys_user ORDER BY id"));
         assertEquals(articles, rows("SELECT * FROM article ORDER BY id"));
+    }
+
+    @Test
+    void passwordMapperAtomicallyIncrementsVersionAndRejectsStaleCredentials() throws SQLException {
+        flyway("latest").migrate();
+        seed("bob@example.com");
+        var config = new MybatisConfiguration();
+        config.setEnvironment(new Environment("session-test", new JdbcTransactionFactory(),
+                new UnpooledDataSource("com.mysql.cj.jdbc.Driver", url, "root", password())));
+        config.addMapper(SysUserMapper.class);
+        try (var session = new MybatisSqlSessionFactoryBuilder().build(config).openSession(true)) {
+            var mapper = session.getMapper(SysUserMapper.class);
+            assertEquals(1, mapper.changePasswordAndRevokeTokens(11L, "alice-hash", "new-hash", 0L));
+            assertEquals(0, mapper.changePasswordAndRevokeTokens(11L, "alice-hash", "stale-hash", 0L));
+            assertEquals(0, mapper.changePasswordAndRevokeTokens(11L, "new-hash", "stale-version", 0L));
+            assertEquals(0, mapper.changePasswordAndRevokeTokens(99L, "missing", "unused", 0L));
+        }
+        assertEquals(List.of("11\tnew-hash\t1", "22\tbob-hash\t0"),
+                rows("SELECT id,password,token_version FROM sys_user ORDER BY id"));
     }
 
     private void seed(String secondEmail) throws SQLException {
