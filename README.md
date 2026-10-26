@@ -451,3 +451,15 @@ docker compose exec -T mysql sh -c \
 - 网站名 / 站点图标 / 首页头图 / 首页中间文字 / ICP 备案号和展示开关都存在 `site_setting` 单行表里，由后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增，ICP 字段由 V9 新增。
 - 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。
 - 文章编辑页是「先看后改」：打开已有文章先是只读的渲染预览（正文走前台那套 Markdown），点右上角「编辑」才进入可写状态。**编辑态下只有标题 / 摘要 / 正文会自动保存**（停下来约 1s 防抖落库，失败自动重试 2 次，顶部显示「正在保存 / 已保存 15:32 / 保存失败 · 重试」），**分类和标签不自动保存**，改完要点「保存」；「完成」回到预览时会先把待保存的文本 flush 掉。首页展示页同理：增删 / 拖拽约 300ms 后自动整体保存，没有保存按钮。两处共用 `frontend/src/composables/useAutoSave.ts`（防抖、单飞串行、重试、离开前 flush），自动保存的请求带 `silent: true`，失败不弹 toast。
+
+### 分享与搜索元数据
+
+生产入口的 `index.html` 使用 Nginx SSI：`/_page-head` 内部子请求读取匿名的
+`GET /site/page-head` HTML 片段，首页显示后台网站名与首页文字，已发布文章和图库详情显示各自标题、摘要、规范地址与 Open Graph / Twitter 元数据。
+分享图片优先使用图库封面，其余使用网站头图；资源地址包含 `/api`，绝对地址取 Nginx 覆写的访问协议及 Host（含非默认端口）。
+Docker HTTP、HTTPS 模板及主机配置示例均已配置此入口，更新时须同时部署前端构建产物、Nginx 配置和后端；仅上传静态文件或使用 `vite preview` 不会执行 SSI。
+本地 Vite 开发仍由浏览器加载站点设置并更新标题及详情元数据。
+
+未发布、缺失或非法详情 ID 的 HTML 不包含私有标题与摘要，并附 `noindex, nofollow`；为保留 SPA 的错误页体验，外层文档仍返回 HTTP 200。
+后端不可用时 SSI 输出无索引的临时标题，页面脚本仍可加载。HTML 不缓存，静态 hash 资源仍长期缓存；已有 CDN 若缓存 HTML，需清理并遵循源站 `no-store`。
+验收时直接用 `curl http://站点/articles/已发布ID`、`curl http://站点/gallery/图库ID` 检查响应源码中的唯一 `<title>`、description、`og:title` 和绝对 canonical，不依赖 JavaScript。
