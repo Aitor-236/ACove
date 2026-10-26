@@ -53,6 +53,26 @@ test('return from detail reloads the same list page before restoring its own scr
   ctx.close()
 })
 
+test('scroll restoration waits until loading placeholder is removed', async () => {
+  const ctx = await setup('/articles?keyword=Vue&page=3')
+  const originalScrollTo = window.scrollTo
+  // A real document cannot scroll to list content while v-if still shows its short placeholder.
+  window.scrollTo = ({ top }) => { window.scrollY = ctx.state.loading ? 0 : top }
+  try {
+    window.scrollY = 640
+    await ctx.router.push('/articles/18')
+    window.scrollY = 0
+    ctx.router.back()
+    await new Promise(resolve => setImmediate(resolve))
+    await settle()
+    assert.equal(window.scrollY, 640)
+    assert.equal(ctx.state.loading, false)
+  } finally {
+    window.scrollTo = originalScrollTo
+    ctx.close()
+  }
+})
+
 test('search and paging create navigable URLs and removed query parameters clear old filters', async () => {
   const ctx = await setup('/articles?category=one&tag=Vue')
   ctx.state.keywordInput = '  状态恢复  '
