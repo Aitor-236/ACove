@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import request from '@/utils/request'
 
@@ -11,6 +12,9 @@ interface ProfileInfo {
   /** 头像相对地址，空字符串表示还没设置过头像 */
   avatar: string
 }
+
+const router = useRouter()
+const route = useRoute()
 
 const AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
 
@@ -221,7 +225,11 @@ async function changePassword() {
     })
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
     passwordFormRef.value?.clearValidate()
-    ElMessage.success('密码已修改')
+    localStorage.removeItem('token')
+    localStorage.removeItem('username')
+    localStorage.removeItem('email')
+    ElMessage.success('密码已修改，请使用新密码重新登录')
+    await router.replace({ path: '/login', query: { redirect: route.fullPath } })
   } catch {
     // 旧密码不正确等业务失败由 request 拦截器提示，保留输入便于修正
   } finally {

@@ -42,6 +42,7 @@ class AdminUserServiceImplTest {
         user.setUsername("alice");
         user.setEmail("alice@example.com");
         user.setPassword("old-hash");
+        user.setTokenVersion(2L);
         when(mapper.selectById(7L)).thenReturn(user);
         when(mapper.selectCount(any())).thenReturn(0L);
     }
@@ -82,6 +83,7 @@ class AdminUserServiceImplTest {
         assertEquals(7L, update.getValue().getId());
         assertEquals("new@example.com", update.getValue().getEmail());
         assertNull(update.getValue().getPassword());
+        assertNull(update.getValue().getTokenVersion());
         assertNull(update.getValue().getRole());
     }
 
@@ -89,15 +91,25 @@ class AdminUserServiceImplTest {
     void changePasswordVerifiesCurrentPasswordAndStoresOnlyEncodedValue() {
         when(passwordEncoder.matches("current", "old-hash")).thenReturn(true);
         when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+        when(mapper.changePasswordAndRevokeTokens(7L, "old-hash", "new-hash", 2L)).thenReturn(1);
 
         service.changePassword(7L, passwordRequest("current", "new-password"));
 
-        ArgumentCaptor<SysUser> update = ArgumentCaptor.forClass(SysUser.class);
-        verify(mapper).updateById(update.capture());
-        assertEquals(7L, update.getValue().getId());
-        assertEquals("new-hash", update.getValue().getPassword());
-        assertNull(update.getValue().getUsername());
-        assertNull(update.getValue().getRole());
+        verify(mapper).changePasswordAndRevokeTokens(7L, "old-hash", "new-hash", 2L);
+        verify(mapper, never()).updateById(any(SysUser.class));
+    }
+
+    @Test
+    void concurrentPasswordChangeIsRejectedWithoutOverwritingNewCredentials() {
+        when(passwordEncoder.matches("current", "old-hash")).thenReturn(true);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+
+        var error = assertThrows(BusinessException.class,
+                () -> service.changePassword(7L, passwordRequest("current", "new-password")));
+
+        assertEquals(409, error.getCode());
+        verify(mapper).changePasswordAndRevokeTokens(7L, "old-hash", "new-hash", 2L);
+        verify(mapper, never()).updateById(any(SysUser.class));
     }
 
     @Test
@@ -110,6 +122,7 @@ class AdminUserServiceImplTest {
         assertEquals("当前密码不正确", error.getMessage());
         verify(mapper, never()).updateById(any(SysUser.class));
         verify(passwordEncoder, never()).encode(any());
+        verify(mapper, never()).changePasswordAndRevokeTokens(any(), any(), any(), any());
     }
 
     @Test

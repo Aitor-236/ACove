@@ -16,9 +16,10 @@ account_write_sql() {
     hash="$(account_sql_text "$3")"
     cat <<SQL
 START TRANSACTION;
--- 旧 schema 必须先升级，不能在缺少邮箱唯一约束时创建重复账号。
-SELECT id FROM sys_user FORCE INDEX (uk_email) WHERE 1 = 0;
-UPDATE sys_user SET email = $email, password = $hash WHERE username = $username;
+-- 旧 schema 必须先升级，缺少邮箱唯一约束或会话版本时不允许创建 / 重置账号。
+SELECT id, token_version FROM sys_user FORCE INDEX (uk_email) WHERE 1 = 0;
+UPDATE sys_user SET email = $email, password = $hash, token_version = token_version + 1
+WHERE username = $username;
 INSERT INTO sys_user (username, email, password)
 SELECT $username, $email, $hash
 WHERE NOT EXISTS (SELECT 1 FROM sys_user WHERE username = $username);
@@ -38,6 +39,6 @@ account_write_error() {
         echo "错误：用户名存在并发写入冲突，账号未写入，请重试。" >&2
     else
         printf '%s\n' "$error" >&2
-        echo "错误：写入账号失败，请确认 MySQL 已启动且已应用 V7 邮箱唯一约束迁移。" >&2
+        echo "错误：写入账号失败，请确认 MySQL 已启动且已应用 V7 邮箱唯一约束及 V10 会话撤销迁移。" >&2
     fi
 }

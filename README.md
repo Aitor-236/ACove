@@ -4,7 +4,7 @@
 
 - 前台：文章列表（分类筛选 + 关键字搜索 + 分页）、文章详情（Markdown 渲染）、画廊、个人简介；首页的网站名、头图、中间文字和 ICP 备案号展示都可在后台设置
 - 后台：文章的增删改查与发布 / 撤回、分类管理、标签管理、图库与图片管理、个人管理（含修改密码）、网站设置（网站名 / 站点图标 / 首页头图 / 首页文字 / ICP 备案号）、访问统计
-- 鉴权：JWT（HS256）登录态，密码以 BCrypt 哈希存储，不存明文
+- 鉴权：JWT（HS256）登录态，按用户会话版本校验；修改密码或通过账号脚本重置会撤销该用户全部旧令牌。密码以 BCrypt 哈希存储，不存明文
 
 ## 技术栈
 
@@ -80,7 +80,7 @@ ACove/
 - **本地开发**：按下面的「启动后端」配好 `application-local.yml`，然后 `./mvnw spring-boot:run`，启动过程中 Flyway 会把表建好。
 - **老库升级**：先 `./deploy.sh backup`；本次升级到 V7 前，必须按下文检查并人工处理重复邮箱，再 `./deploy.sh migrate`。库里已有表但没有 `flyway_schema_history` 时，Flyway 先写一条 version 0 的基线记录，再执行幂等的 `V1__baseline.sql`（全是 `CREATE TABLE IF NOT EXISTS` 与 `ON DUPLICATE KEY UPDATE id = id`，不缺表、不覆盖你改过的数据），最后继续 V2+。
 - **查看状态**：`./deploy.sh info` 打印已应用 / 未应用的迁移版本。
-- **改表结构**：当前迁移到 V8（增加站点图标设置），新增表结构从 `V9__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
+- **改表结构**：当前迁移到 V10（增加用户会话撤销版本），新增表结构从 `V11__xxx.sql` 开始；不要改已经应用过的迁移文件（校验和不匹配会导致启动失败），也不要再去改 `sql/legacy/` 里的老脚本。
 
 #### V7 升级前：检查重复邮箱
 
@@ -109,7 +109,7 @@ ORDER BY u.email, u.id;
 ./sql/init_account.sh acove me@example.com       # 用户名和邮箱走参数，密码仍交互输入
 ```
 
-连接信息可以用环境变量覆盖：`BLOG_DB_HOST` / `BLOG_DB_PORT` / `BLOG_DB_NAME` / `BLOG_DB_USER` / `BLOG_DB_PASSWORD`；设置 `BLOG_ACCOUNT_PASSWORD` 可以跳过密码交互，方便自动化部署。用户名已存在时会更新它的邮箱和密码，也可以当重置密码用。两个入口（本脚本和 `./deploy.sh account`）均要求先应用 V7，只按用户名定位账号；邮箱已属于其他用户名时拒绝写入，整个事务回滚，原账号的密码、邮箱及角色保持不变。
+连接信息可以用环境变量覆盖：`BLOG_DB_HOST` / `BLOG_DB_PORT` / `BLOG_DB_NAME` / `BLOG_DB_USER` / `BLOG_DB_PASSWORD`；设置 `BLOG_ACCOUNT_PASSWORD` 可以跳过密码交互，方便自动化部署。用户名已存在时会更新它的邮箱和密码，也可以当重置密码用。两个入口（本脚本和 `./deploy.sh account`）均要求先应用 V7 和 V10，只按用户名定位账号；邮箱已属于其他用户名时拒绝写入，整个事务回滚，原账号的密码、邮箱及角色保持不变。
 
 脚本依赖 `mysql` 客户端，以及 `python3` + `bcrypt` 或 `apache2-utils`（`htpasswd`）中的任意一个。
 
@@ -171,6 +171,8 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 ## 接口一览
 
 所有接口返回统一结构 `{ code, message, data }`。业务失败时 HTTP 状态码仍是 200，靠 `code` 区分：400 参数或状态错误、401 未登录或密码错误、404 资源不存在、500 服务器异常。唯一例外是 token 校验失败，`JwtInterceptor` 会直接返回 HTTP 401。
+
+会话撤销由 Flyway V10 新增的 `sys_user.token_version` 保证：受保护请求同时校验签名、有效期、用户存在及版本一致。部署此版本后，旧 JWT 因缺少 `tokenVersion` 必须统一重新登录；修改密码或使用 `sql/init_account.sh` / `./deploy.sh account` 重置账号时，只撤销该账号旧会话。账号初始化 / 重置脚本要求先应用 V7 与 V10，缺失迁移会中止事务，不会静默绕过会话撤销。改密成功后前端清除登录信息，重新登录会返回原页面。
 
 公开接口（无需 token）：
 
@@ -249,7 +251,7 @@ Vite 默认跑在 `http://localhost:5173`，并把 `/api` 开头的请求代理�
 
 | 表 | 说明 |
 | --- | --- |
-| `sys_user` | 登录用户：`id` / `username`（唯一）/ `email`（唯一，沿用列排序规则）/ `password`（BCrypt）/ `avatar`（头像地址，默认空）/ `role`（owner-站长、admin-管理员、user-普通用户）/ `create_time` |
+| `sys_user` | 登录用户：`id` / `username`（唯一）/ `email`（唯一，沿用列排序规则）/ `password`（BCrypt）/ `token_version`（会话撤销版本，V10 默认 0）/ `avatar`（头像地址，默认空）/ `role`（owner-站长、admin-管理员、user-普通用户）/ `create_time` |
 | `article_category` | 文章分类：`name` / `slug`（唯一）/ `sort_order`，迁移脚本 `V1__baseline.sql` 预置前端、后端、绘画、生活四条 |
 | `tag` | 标签：`name`（唯一） |
 | `article` | 文章主表：`title` / `summary` / `content_markdown` / `status`(draft, published) / `published_at` / `reading_minutes` |
@@ -444,7 +446,7 @@ docker compose exec -T mysql sh -c \
 - `article.author_id` 对齐 `sys_user.id` 使用**有符号** BIGINT，文章模块其余主键是 BIGINT UNSIGNED，新增外键列时注意类型不要写错。
 - 头像、正文配图、站点图标、首页头图、图库图片和个人简介页资源都存放在 `blog.upload.dir`（默认 `backend/uploads/avatar/`、`backend/uploads/article/`、`backend/uploads/favicon/`、`backend/uploads/hero/`、`backend/uploads/gallery/` 和 `backend/uploads/profile-page/`，已加入 `.gitignore`），部署时该目录要可写并且要持久化，否则上传资源会在重建容器后丢失（Docker 部署已由 `acove_uploads-data` 数据卷处理）。
 - 文章正文配图和图库图片保留原图，并在旁边生成 480px 与 1600px 长边的 WebP 派生图；列表和正文默认按需加载缩略图，点击后查看原图。GIF 缩略图使用首帧，原图仍保留动画；派生图使用一年 immutable 缓存。存量图片升级后用 `./deploy.sh image-thumbnails` 一次性补齐，不涉及数据库或 Markdown 内容变更；命令会停止后端完成离线扫描，再自动启动后端。
-- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置、`V9__add_icp_record_settings.sql` 增加 ICP 备案号与首页展示开关。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
+- 数据库 schema 的唯一来源是 `backend/src/main/resources/db/migration/`：`V1__baseline.sql` 是接入 Flyway 时的基线（幂等，已有表的老库首次启动会重跑一遍空操作），`V2__create_todo.sql` 建 Todo 表、`V3__create_open_source_project.sql` 建开源项目表、`V4__create_home_article.sql` 建首页展示表、`V5__create_gallery.sql` 建图库与图片表、`V6__create_site_profile_page.sql` 建个人简介页配置和 HTML 资源包表、`V7__add_unique_user_email.sql` 增加邮箱唯一约束、`V8__add_site_icon.sql` 增加站点图标设置、`V9__add_icp_record_settings.sql` 增加 ICP 备案号与首页展示开关、`V10__add_user_token_version.sql` 增加用户会话撤销版本。老库连上 Flyway 后会多出一张 `flyway_schema_history` 记录表，`./deploy.sh info` 与 `./deploy.sh migrate` 就是围绕它工作的。
 - `V1__baseline.sql` 的种子数据（四个分类 + `site_setting` 默认行）用 `ON DUPLICATE KEY UPDATE id = id` 写成幂等且不覆盖已有值，所以老库重新执行它不会改掉你在后台改过的分类名、排序或站点设置。
 - 网站名 / 站点图标 / 首页头图 / 首页中间文字 / ICP 备案号和展示开关都存在 `site_setting` 单行表里，由后台「站点设置 → 网站设置」页维护；站点图标列由 V8 新增，ICP 字段由 V9 新增。
 - 后台「文章管理 → 编辑文章」的正文编辑器是**左右分屏**：左栏 `frontend/src/components/MarkdownSplitEditor.vue`（CodeMirror 6 源码，带行号与 Markdown 高亮，依赖六个 `@codemirror/*` 包），右栏 `frontend/src/components/MarkdownPreview.vue`（走 `frontend/src/utils/markdown.ts` 那套渲染，代码块高亮、`::: code-group` 标签页、GFM 表格都与前台详情页一致）。Markdown 字符串仍是唯一真源、保存不重排；只读预览态与分屏右栏共用同一个预览组件。分栏比例记在 `localStorage`（键 `acove:editor-split`），≤1180px 自动转成上下堆叠。

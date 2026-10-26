@@ -76,7 +76,7 @@ def main():
             env.update(ACOVE_QA_MYSQL_URL=f"jdbc:mysql://127.0.0.1:{port}/",
                        ACOVE_QA_MYSQL_PASSWORD=PASSWORD)
 
-            print("Running backend tests and actual Flyway V1–V7 / V6 upgrade scenarios", flush=True)
+            print("Running backend tests and actual Flyway V1–V10 / V6 upgrade scenarios", flush=True)
             maven = ["mvn"]
             if env.get("ACOVE_QA_MAVEN_ONLINE") != "1":
                 maven.append("-o")
@@ -89,7 +89,8 @@ def main():
             for entry in ("standalone", "deploy"):
                 database = "acove_script_qa_" + entry
                 mysql(f"CREATE DATABASE {database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
-                for migration in sorted((ROOT / "backend/src/main/resources/db/migration").glob("V*.sql")):
+                for migration in sorted((ROOT / "backend/src/main/resources/db/migration").glob("V*.sql"),
+                                        key=lambda path: int(path.name.split("__", 1)[0][1:])):
                     mysql(migration.read_text(encoding="utf-8"), database)
                 entry_env = dict(env, BLOG_DB_HOST="127.0.0.1", BLOG_DB_PORT=port,
                                  BLOG_DB_NAME=database, BLOG_DB_USER="root", BLOG_DB_PASSWORD=PASSWORD)
@@ -102,7 +103,7 @@ def main():
                     return run(args, env=call_env, check=False)
 
                 def snapshot():
-                    return mysql("SELECT id,username,email,password,role,create_time FROM sys_user ORDER BY id;", database)
+                    return mysql("SELECT id,username,email,password,role,token_version,create_time FROM sys_user ORDER BY id;", database)
 
                 def success(result):
                     assert result.returncode == 0, result.stderr
@@ -121,10 +122,14 @@ def main():
                 success(account("alice", "alice@example.com"))
                 assert mysql("SELECT role FROM sys_user WHERE username='alice';", database) == "owner"
                 success(account("bob", "bob@example.com"))
+                assert mysql("SELECT token_version FROM sys_user WHERE username='alice';", database) == "0"
                 success(account("alice", "alice@example.com", "reset-password"))
+                assert mysql("SELECT token_version FROM sys_user WHERE username='alice';", database) == "1"
+                assert mysql("SELECT token_version FROM sys_user WHERE username='bob';", database) == "0"
                 check_password("alice", "reset-password")
                 success(account("bob", "bob-new@example.com", "bob-new-password"))
                 check_password("bob", "bob-new-password")
+                assert mysql("SELECT token_version FROM sys_user WHERE username='bob';", database) == "1"
                 for name in ("intruder", "bob"):
                     before = snapshot()
                     conflict(account(name, "ALICE@example.com", "must-not-change-any-password"))
@@ -159,15 +164,23 @@ def main():
                 assert mysql("SELECT COUNT(*) FROM sys_user WHERE username LIKE 'new-racer-%';", database) == "1"
                 assert all(row in snapshot().splitlines() for row in before.splitlines())
 
-                previous = {name: mysql(f"SELECT email,password FROM sys_user WHERE username='{name}';", database)
+                previous = {name: mysql(f"SELECT email,password,token_version FROM sys_user WHERE username='{name}';", database)
                             for name in ("alice", "bob")}
                 loser = race(("alice", "bob"), "existing-race@example.com")
-                assert mysql(f"SELECT email,password FROM sys_user WHERE username='{loser}';", database) == previous[loser]
+                assert mysql(f"SELECT email,password,token_version FROM sys_user WHERE username='{loser}';", database) == previous[loser]
 
                 # Both callers use the same SQL-mode-independent literal encoder.
                 mysql("SET GLOBAL sql_mode=CONCAT(@@GLOBAL.sql_mode,',NO_BACKSLASH_ESCAPES');")
                 success(account("quote'\\name", "quoted@example.com"))
                 assert mysql("SELECT COUNT(*) FROM sys_user WHERE email='quoted@example.com';", database) == "1"
+
+                # Missing V10 must fail before any password/email/role mutation.
+                mysql("ALTER TABLE sys_user RENAME COLUMN token_version TO previous_token_version;", database)
+                before = mysql("SELECT id,username,email,password,role,previous_token_version FROM sys_user ORDER BY id;", database)
+                missing = account("alice", "v10-missing@example.com", "must-not-change-password")
+                assert missing.returncode != 0 and "V10" in missing.stderr, missing.stderr
+                assert mysql("SELECT id,username,email,password,role,previous_token_version FROM sys_user ORDER BY id;", database) == before
+                mysql("ALTER TABLE sys_user RENAME COLUMN previous_token_version TO token_version;", database)
 
                 # Missing V7 is rejected before any account/role mutation.
                 mysql("ALTER TABLE sys_user DROP INDEX uk_email;", database)
