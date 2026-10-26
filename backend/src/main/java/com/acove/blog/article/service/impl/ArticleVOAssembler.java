@@ -48,11 +48,11 @@ public class ArticleVOAssembler {
             return List.of();
         }
 
-        Map<Long, String> categoryNames = loadCategoryNames(articles);
+        Map<Long, ArticleCategory> categories = loadCategories(articles);
         Map<Long, List<String>> tagNames = loadTagNames(articles);
         return articles.stream()
                 .map(article -> {
-                    ArticleVO vo = ArticleVO.from(article, categoryNames.get(article.getCategoryId()));
+                    ArticleVO vo = ArticleVO.from(article, categories.get(article.getCategoryId()));
                     vo.setTags(tagNames.getOrDefault(article.getId(), List.of()));
                     return vo;
                 })
@@ -65,7 +65,7 @@ public class ArticleVOAssembler {
         return empty;
     }
 
-    private Map<Long, String> loadCategoryNames(List<Article> articles) {
+    private Map<Long, ArticleCategory> loadCategories(List<Article> articles) {
         Set<Long> categoryIds = articles.stream()
                 .map(Article::getCategoryId)
                 .filter(Objects::nonNull)
@@ -74,7 +74,7 @@ public class ArticleVOAssembler {
             return Map.of();
         }
         return articleCategoryMapper.selectByIds(categoryIds).stream()
-                .collect(Collectors.toMap(ArticleCategory::getId, ArticleCategory::getName));
+                .collect(Collectors.toMap(ArticleCategory::getId, category -> category));
     }
 
     /** 一次查出一页文章的所有标签，按标签ID顺序追加到各自文章下。 */

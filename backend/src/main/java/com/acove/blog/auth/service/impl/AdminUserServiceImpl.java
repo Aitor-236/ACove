@@ -174,10 +174,11 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new BusinessException("当前密码不正确");
         }
 
-        SysUser update = new SysUser();
-        update.setId(existing.getId());
-        update.setPassword(passwordEncoder.encode(newPassword));
-        sysUserMapper.updateById(update);
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        if (sysUserMapper.changePasswordAndRevokeTokens(existing.getId(), existing.getPassword(),
+                encodedPassword, existing.getTokenVersion()) != 1) {
+            throw new BusinessException(409, "密码已更改，请重新登录后重试");
+        }
     }
 
     /** 取当前登录用户，未登录（token 里没有 userId）或用户已被删掉时抛业务异常。 */

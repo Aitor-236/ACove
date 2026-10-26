@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
 import request from '@/utils/request'
+import { usePageMetadata } from '@/composables/usePageMetadata'
 import { imageSource, thumbnailSource } from '@/utils/imageUrls'
 
 interface GalleryImage {
@@ -27,6 +28,8 @@ const gallery = ref<GalleryDetail | null>(null)
 const loading = ref(true)
 const error = ref('')
 const failedThumbnails = ref(new Set<number>())
+let galleryRequestId = 0
+onBeforeUnmount(() => { galleryRequestId += 1 })
 
 const previewUrls = computed(() => gallery.value?.images.map((image) => imageSource(image.url)) ?? [])
 
@@ -42,21 +45,27 @@ function handleThumbnailError(image: GalleryImage) {
 }
 
 async function loadGallery() {
+  const requestId = ++galleryRequestId
   const id = String(route.params.id ?? '')
   loading.value = true
   error.value = ''
   gallery.value = null
+  failedThumbnails.value = new Set()
   try {
-    const res = (await request.get(`/gallery/detail/${encodeURIComponent(id)}`)) as {
+    const res = (await request.get(`/gallery/detail/${encodeURIComponent(id)}`, { silent: true })) as {
       data: GalleryDetail
     }
+    if (requestId !== galleryRequestId) return
     gallery.value = res.data
   } catch {
+    if (requestId !== galleryRequestId) return
     error.value = '图库详情加载失败，请稍后重试。'
   } finally {
-    loading.value = false
+    if (requestId === galleryRequestId) loading.value = false
   }
 }
+
+usePageMetadata(() => ({ title: gallery.value?.name, description: gallery.value?.description, image: gallery.value?.coverImage, noindex: !gallery.value }))
 
 watch(() => route.params.id, loadGallery, { immediate: true })
 </script>

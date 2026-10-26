@@ -1,6 +1,8 @@
 package com.acove.blog.common.interceptor;
 
 import com.acove.blog.common.utils.JwtUtil;
+import com.acove.blog.auth.entity.SysUser;
+import com.acove.blog.auth.mapper.SysUserMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     public static final String REQUEST_ATTRIBUTE_USER_ID = "userId";
 
     private final JwtUtil jwtUtil;
+    private final SysUserMapper sysUserMapper;
 
     @Override 
     public boolean preHandle(
@@ -31,8 +34,16 @@ public class JwtInterceptor implements HandlerInterceptor {
         if (token != null && token.startsWith("Bearer ")) {
             token = token.substring(7); // Remove "Bearer " prefix
             if (jwtUtil.verifyToken(token)) {
-                request.setAttribute(REQUEST_ATTRIBUTE_USER_ID, JwtUtil.getUserId(token));
-                return true; // Token is valid, proceed with the request
+                Long userId = JwtUtil.getUserId(token);
+                Long tokenVersion = JwtUtil.getTokenVersion(token);
+                // 无版本的既有 JWT 必须重新登录，不能默认为 0 绕过首次改密撤销。
+                if (userId != null && tokenVersion != null && tokenVersion >= 0) {
+                    SysUser user = sysUserMapper.selectById(userId);
+                    if (user != null && tokenVersion.equals(user.getTokenVersion())) {
+                        request.setAttribute(REQUEST_ATTRIBUTE_USER_ID, userId);
+                        return true;
+                    }
+                }
             }
         }
         // Token is missing or invalid, request 401

@@ -84,7 +84,24 @@ server {
 
     # index.html 不缓存，保证发版后立刻拿到新版本
     location = /index.html {
+        ssi on;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
+    # HTML metadata is rendered before sending the SPA document, including for crawlers without JS.
+    location = /_page-head {
+        internal;
+        ssi off;
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $page_backend http://backend:8080;
+        proxy_pass $page_backend/site/page-head;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header X-Page-URI $request_uri;
+        proxy_set_header X-Page-Scheme $scheme;
+        proxy_set_header X-Page-Host $http_host;
+        proxy_connect_timeout 2s;
+        proxy_read_timeout 3s;
     }
 
     # 前端 axios 的 baseURL 是 /api，这里去掉前缀转发给后端

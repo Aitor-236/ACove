@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import request from '@/utils/request'
+import { useSiteSettings } from '@/composables/useSiteSettings'
 
 interface LoginResult {
   token: string
   username: string
   email: string
 }
+
+const { siteName, loadSiteSettings } = useSiteSettings()
+const siteInitial = computed(() => Array.from(siteName.value.trim())[0]?.toUpperCase() || 'A')
+onMounted(() => { void loadSiteSettings() })
 
 const formRef = ref<FormInstance>()
 const loading = ref(false)
@@ -67,8 +72,8 @@ async function handleLogin() {
   <div class="login-page">
     <main class="login-card surface-panel">
       <div class="login-header">
-        <div class="logo">A</div>
-        <h1>登录 ACove</h1>
+        <div class="logo">{{ siteInitial }}</div>
+        <h1>登录 {{ siteName }}</h1>
         <p>使用邮箱或用户名登录，欢迎回来</p>
       </div>
 

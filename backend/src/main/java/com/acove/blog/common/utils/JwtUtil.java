@@ -14,22 +14,24 @@ import com.auth0.jwt.JWT;
 @Component 
 @RequiredArgsConstructor 
 public class JwtUtil {
-    // This class is intended to provide utility methods for handling JWT.
-    // The implementation details for generating, validating, and parsing JWTs would be added here.
-
     private final JwtProperties jwtProperties;
 
     /**
      * Generates a JWT token for the given user ID and username.
      * @param userId The ID of the user for whom to generate the token.
      * @param username The username of the user for whom to generate the token.
+     * @param tokenVersion The user's current session version in the database.
      * @return The generated JWT token.
      */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, Long tokenVersion) {
+        if (userId == null || tokenVersion == null || tokenVersion < 0) {
+            throw new IllegalArgumentException("User ID and a non-negative token version are required");
+        }
         Date date = new Date(System.currentTimeMillis() + jwtProperties.getExpireTime());
         return JWT.create()
                 .withClaim("userId", userId)
                 .withClaim("username", username)
+                .withClaim("tokenVersion", tokenVersion)
                 .withExpiresAt(date)
                 .sign(Algorithm.HMAC256(jwtProperties.getSecretKey()));
     }
@@ -41,7 +43,8 @@ public class JwtUtil {
      */
     public boolean verifyToken(String token) {
         try {
-            JWT.require(Algorithm.HMAC256(jwtProperties.getSecretKey())).build().verify(token);
+            JWT.require(Algorithm.HMAC256(jwtProperties.getSecretKey()))
+                    .withClaimPresence("exp").build().verify(token);
             return true;
         } catch (Exception e) {
             return false;
@@ -62,11 +65,16 @@ public class JwtUtil {
         }
     }
 
-    /**
-     * Extracts the user ID from the given JWT token.
-     * @param token The JWT token from which to extract the user ID.
-     * @return The user ID extracted from the token, or null if the token is invalid or the userId claim is not present.
-     */
+    /** 仅在签名校验通过后使用；缺少版本的历史令牌返回 null。 */
+    public static Long getTokenVersion(String token) {
+        try {
+            return JWT.decode(token).getClaim("tokenVersion").asLong();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 仅在签名校验通过后使用；缺少用户 ID 返回 null。 */
     public static Long getUserId(String token) {
         try {
             DecodedJWT jwt = JWT.decode(token);

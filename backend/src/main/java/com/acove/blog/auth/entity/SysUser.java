@@ -18,6 +18,9 @@ public class SysUser {
 
     private String password;
 
+    /** 会话撤销版本；不设实体默认值，避免资料 / 头像的部分更新意外重置版本。 */
+    private Long tokenVersion;
+
     private String email;
 
     /** 头像地址，默认空字符串表示未设置头像 */

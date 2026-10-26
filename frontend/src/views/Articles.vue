@@ -1,12 +1,11 @@
 <script lang="ts">
-// 模块级变量：记住离开列表页时的滚动位置，从文章详情返回时用来恢复。
-// 列表内容是接口异步加载的，直接靠浏览器恢复会因高度不够被截断到顶部。
-let savedScrollTop = 0
+// 按列表 URL 记住滚动位置，数据加载后再恢复，避免不同筛选或页码共用旧位置。
+const savedScrollPositions = new Map<string, number>()
 </script>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
-import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import request from '@/utils/request'
 
 /** 文章卡片类型（来自 GET /article/list） */
@@ -15,6 +14,7 @@ interface ArticleItem {
   title: string
   summary: string
   categoryName: string
+  categorySlug: string
   /** 列表卡片显示更新时间和详情页保持一致 */
   updatedAt: string | null
   readingMinutes: number
@@ -68,6 +68,8 @@ const page = ref(1)
 const total = ref(0)
 const loading = ref(false)
 const errorMessage = ref('')
+let articleRequestId = 0
+onBeforeUnmount(() => { articleRequestId += 1 })
 
 const totalArticles = computed(() =>
   categories.value.reduce((sum, category) => sum + category.articleCount, 0)
@@ -139,10 +141,12 @@ async function loadTags() {
 }
 
 async function loadArticles() {
+  const requestId = ++articleRequestId
   loading.value = true
   errorMessage.value = ''
   try {
     const res = (await request.get('/article/list', {
+      silent: true,
       params: {
         page: page.value,
         size: PAGE_SIZE,
@@ -152,35 +156,51 @@ async function loadArticles() {
       }
     })) as { data: ArticlePage }
 
+    if (requestId !== articleRequestId) return
     articles.value = res.data.records
     total.value = res.data.total
+    const lastPage = Math.max(1, Math.ceil(total.value / PAGE_SIZE))
+    if (page.value > lastPage) {
+      page.value = lastPage
+      syncQuery(true)
+      return
+    }
+    // 先移除加载占位，让真实列表撑开页面高度，再恢复位置。
+    loading.value = false
+    await restoreScroll(requestId)
   } catch {
+    if (requestId !== articleRequestId) return
     articles.value = []
     total.value = 0
     errorMessage.value = '文章加载失败，请稍后重试。'
   } finally {
-    loading.value = false
+    if (requestId === articleRequestId) loading.value = false
   }
 }
 
 /** 把当前筛选写回地址栏，链接可以直接分享、刷新后筛选还在 */
-function syncQuery() {
+function syncQuery(replace = false) {
   const query: Record<string, string> = {}
   if (activeCategorySlug.value) query.category = activeCategorySlug.value
   if (activeTagName.value) query.tag = activeTagName.value
-  void router.replace({ path: '/articles', query })
+  if (appliedKeyword.value) query.keyword = appliedKeyword.value
+  if (page.value > 1) query.page = String(page.value)
+  if (router.resolve({ path: '/articles', query }).fullPath === route.fullPath) {
+    void loadArticles()
+    return
+  }
+  void router[replace ? 'replace' : 'push']({ path: '/articles', query })
 }
 
 /** 从详情页的分类标签跳进来时地址栏带 ?category=slug，这里直接按它筛选 */
 function applyRouteQuery() {
-  const categoryQuery = route.query.category
-  if (typeof categoryQuery === 'string' && categoryQuery) {
-    activeCategorySlug.value = categoryQuery
-  }
-  const tagQuery = route.query.tag
-  if (typeof tagQuery === 'string' && tagQuery) {
-    activeTagName.value = tagQuery
-  }
+  const readQuery = (key: string) => typeof route.query[key] === 'string' ? route.query[key] as string : ''
+  activeCategorySlug.value = readQuery('category')
+  activeTagName.value = readQuery('tag')
+  appliedKeyword.value = readQuery('keyword').trim()
+  keywordInput.value = appliedKeyword.value
+  const requestedPage = Number(readQuery('page'))
+  page.value = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1
 }
 
 function selectCategory(slug: string) {
@@ -188,7 +208,6 @@ function selectCategory(slug: string) {
   activeCategorySlug.value = slug
   page.value = 1
   syncQuery()
-  void loadArticles()
 }
 
 /** 再点一次已选中的标签表示取消筛选。 */
@@ -196,7 +215,6 @@ function selectTagName(name: string) {
   activeTagName.value = activeTagName.value === name ? '' : name
   page.value = 1
   syncQuery()
-  void loadArticles()
 }
 
 /** 下拉框选标签：直接切到该标签，选「全部标签」才清掉 */
@@ -205,15 +223,6 @@ function applyTagFilter(name: string) {
   activeTagName.value = name
   page.value = 1
   syncQuery()
-  void loadArticles()
-}
-
-/** 文章卡片上的分类徽标只有名称，这里按名称换回 slug 再筛选 */
-function selectCategoryByName(name: string) {
-  const matched = categories.value.find((category) => category.name === name)
-  if (matched) {
-    selectCategory(matched.slug)
-  }
 }
 
 function clearTagFilter() {
@@ -221,45 +230,58 @@ function clearTagFilter() {
   activeTagName.value = ''
   page.value = 1
   syncQuery()
-  void loadArticles()
 }
 
 function applySearch() {
   appliedKeyword.value = keywordInput.value.trim()
   page.value = 1
-  void loadArticles()
+  syncQuery()
 }
 
 function clearSearch() {
   keywordInput.value = ''
   appliedKeyword.value = ''
   page.value = 1
-  void loadArticles()
+  syncQuery()
 }
 
 function changePage(next: number) {
   if (next < 1 || next > totalPages.value || next === page.value) return
   page.value = next
-  void loadArticles()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  syncQuery()
 }
 
-onMounted(async () => {
-  await Promise.all([loadCategories(), loadTags()])
-  applyRouteQuery()
-  await loadArticles()
-  // 列表渲染出来、高度稳定后再恢复滚动位置，没到位就再等一帧重试
+async function restoreScroll(requestId: number) {
+  const top = savedScrollPositions.get(route.fullPath) ?? 0
   await nextTick()
-  for (let attempt = 0; attempt < 6 && savedScrollTop > 0; attempt += 1) {
-    window.scrollTo({ top: savedScrollTop })
-    if (Math.abs(window.scrollY - savedScrollTop) < 2) break
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (requestId !== articleRequestId) return
+    window.scrollTo({ top })
+    if (Math.abs(window.scrollY - top) < 2) break
     await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
   }
+}
+
+onMounted(() => {
+  void Promise.all([loadCategories(), loadTags()])
 })
 
-onBeforeRouteLeave(() => {
-  savedScrollTop = window.scrollY
-})
+watch(() => route.fullPath, () => {
+  if (route.path !== '/articles') return
+  applyRouteQuery()
+  void loadArticles()
+}, { immediate: true })
+
+function rememberScroll(path: string) {
+  savedScrollPositions.set(path, window.scrollY)
+  if (savedScrollPositions.size > 50) {
+    const oldest = savedScrollPositions.keys().next().value
+    if (oldest !== undefined) savedScrollPositions.delete(oldest)
+  }
+}
+
+onBeforeRouteUpdate((_to, from) => rememberScroll(from.fullPath))
+onBeforeRouteLeave((_to, from) => rememberScroll(from.fullPath))
 </script>
 
 <template>
@@ -372,7 +394,7 @@ onBeforeRouteLeave(() => {
                   type="button"
                   class="card-tag"
                   :title="`只看「${article.categoryName}」分类`"
-                  @click.prevent="selectCategoryByName(article.categoryName)"
+                  @click.prevent="selectCategory(article.categorySlug)"
                 >
                   {{ article.categoryName }}
                 </button>
