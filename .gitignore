@@ -4,6 +4,7 @@
 ### agnet ###
 .codex/
 .dsh/
+output/
 
 ### 上传文件（头像等），运行时产物不入库 ###
 backend/uploads/
